@@ -218,7 +218,7 @@ const filterDisplayNames = {
 // ######################################################################
 
 // ฟังก์ชันสำหรับแปลงค่า Col G
-const getCodStatus = (code) => {
+const getCodStatus = (code: any) => {
   const c = String(code).toUpperCase();
   if (c === "R") return "COD(แดง)";
   if (c === "B") return "COD(น้ำเงิน)";
