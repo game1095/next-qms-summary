@@ -39,10 +39,13 @@ const REPORT_REASONS = [
 // [ใหม่] สร้าง Map เพื่อให้ค้นหา Label ได้เร็วขึ้น
 const reasonLabelMap = new Map(REPORT_REASONS.map((r) => [r.key, r.label]));
 
-const initialReportFormData = REPORT_REASONS.reduce((acc, reason) => {
-  acc[reason.key] = "";
-  return acc;
-}, {});
+const initialReportFormData = REPORT_REASONS.reduce(
+  (acc: { [key: string]: string }, reason) => {
+    acc[reason.key] = "";
+    return acc;
+  },
+  {}
+);
 // ------------------------------------------
 
 // กำหนด Key ของไฟล์ทั้ง 5
