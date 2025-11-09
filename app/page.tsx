@@ -39,6 +39,7 @@ const REPORT_REASONS = [
 // [ใหม่] สร้าง Map เพื่อให้ค้นหา Label ได้เร็วขึ้น
 const reasonLabelMap = new Map(REPORT_REASONS.map((r) => [r.key, r.label]));
 
+// ########## [แก้ไข TypeScript Error 1] ##########
 const initialReportFormData = REPORT_REASONS.reduce(
   (acc: { [key: string]: string }, reason) => {
     acc[reason.key] = "";
@@ -217,6 +218,7 @@ const filterDisplayNames = {
 //   จบส่วน Global
 // ######################################################################
 
+// ########## [แก้ไข TypeScript Error 2] ##########
 // ฟังก์ชันสำหรับแปลงค่า Col G
 const getCodStatus = (code: any) => {
   const c = String(code).toUpperCase();
@@ -226,18 +228,20 @@ const getCodStatus = (code: any) => {
   return "ไม่";
 };
 
+// ########## [แก้ไข TypeScript Error 3] ##########
 // [แก้ไข] ฟังก์ชันช่วยแปลงวันที่ (Date object) เป็น YYYY-MM-DD (AD)
-const formatDateToISO = (date) => {
+const formatDateToISO = (date: Date | null) => {
   if (!date) return null;
   const yearAD = date.getFullYear();
   const month = date.getMonth() + 1; // getMonth() returns 0-11
   const day = date.getDate();
-  const pad = (num) => String(num).padStart(2, "0");
+  const pad = (num: number) => String(num).padStart(2, "0");
   return `${yearAD}-${pad(month)}-${pad(day)}`;
 };
 
+// ########## [แก้ไข TypeScript Error 4] ##########
 // [ใหม่] ฟังก์ชันแปลงวันที่เป็น พ.ศ. (สำหรับแสดงผล)
-const formatToFullThaiDate = (date) => {
+const formatToFullThaiDate = (date: Date | string | null) => {
   if (!date) return "";
 
   // [แก้ไข] ตรวจสอบว่าเป็น String (YYYY-MM-DD) หรือไม่
@@ -274,36 +278,47 @@ const formatToFullThaiDate = (date) => {
 //   Component สำหรับหน้า Dashboard
 // ######################################################################
 
-const DashboardView = ({ active }) => {
+// ########## [แก้ไข TypeScript Error 5] ##########
+const DashboardView = ({ active }: { active: boolean }) => {
   // [*** แก้ไข: ลบ days, months ***]
   const years = [2568, 2569, 2570];
 
   // State สำหรับเก็บข้อมูลที่ดึงจาก Supabase
-  const [supabaseData, setSupabaseData] = useState([]);
+  const [supabaseData, setSupabaseData] = useState<any[]>([]); // ระบุ Type ให้ชัดเจนขึ้น
   const [isLoading, setIsLoading] = useState(true);
 
   // State สำหรับ Modal อัปโหลด
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadFilesData, setUploadFilesData] = useState({});
-  const [uploadFileNames, setUploadFileNames] = useState({});
+  const [uploadFilesData, setUploadFilesData] = useState<{
+    [key: string]: any[];
+  }>({}); // ระบุ Type
+  const [uploadFileNames, setUploadFileNames] = useState<{
+    [key: string]: string;
+  }>({}); // ระบุ Type
 
   // [*** แก้ไข: เปลี่ยน State วันที่อัปโหลด ***]
-  const [uploadDate, setUploadDate] = useState(null);
+  const [uploadDate, setUploadDate] = useState<Date | null>(null);
   // [*** ลบ: uploadDay, uploadMonth, uploadYear ***]
 
   // State สำหรับ Modal รายละเอียด
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalData, setModalData] = useState({
+  const [modalData, setModalData] = useState<{
+    title: string;
+    details: any[];
+    summary: { H: number; M: number; O: number };
+  }>({
     title: "",
     details: [],
     summary: { H: 0, M: 0, O: 0 },
-  });
+  }); // ระบุ Type
 
   // State สำหรับ Modal รายงานหมายเหตุ
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [reportDate, setReportDate] = useState(null);
-  const [reportFormData, setReportFormData] = useState(initialReportFormData);
+  const [reportDate, setReportDate] = useState<Date | null>(null);
+  const [reportFormData, setReportFormData] = useState<{
+    [key: string]: string;
+  }>(initialReportFormData); // ระบุ Type
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   // State สำหรับ Filter ที่เลือก
@@ -316,8 +331,8 @@ const DashboardView = ({ active }) => {
   const [isControlsOpen, setIsControlsOpen] = useState(true);
 
   // State วัน/เดือน/ปี (สำหรับ Fetch ข้อมูล)
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
 
   // useEffect เพื่อตั้งค่าเป็น "เมื่อวานนี้"
   useEffect(() => {
@@ -334,7 +349,7 @@ const DashboardView = ({ active }) => {
   }, []);
 
   // [แก้ไข] ฟังก์ชันสำหรับดึงข้อมูล (ดึงแค่ delivery_data)
-  const fetchData = async (start, end) => {
+  const fetchData = async (start: Date | null, end: Date | null) => {
     setIsLoading(true);
     setSupabaseData([]);
 
@@ -372,19 +387,26 @@ const DashboardView = ({ active }) => {
     }
   }, [startDate, endDate, active]); // เพิ่ม active เป็น dependency
 
+  // ########## [แก้ไข TypeScript Error 6] ##########
   // ฟังก์ชันสำหรับจัดการการอัปโหลดไฟล์
-  const handleUploadFileChange = (e, fileKey) => {
-    const file = e.target.files[0];
+  const handleUploadFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    fileKey: string
+  ) => {
+    const file = e.target.files?.[0]; // ใช้ optional chaining
     if (!file) return;
 
     setUploadFileNames((prev) => ({ ...prev, [fileKey]: file.name }));
     const reader = new FileReader();
     reader.onload = (event) => {
-      const buffer = event.target.result;
+      const buffer = event.target?.result; // ใช้ optional chaining
+      if (!buffer) return; // เพิ่มการตรวจสอบ
       const workbook = XLSX.read(buffer, { type: "array" });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      const jsonData: any[][] = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1,
+      }); // ระบุ Type
       const slicedData = jsonData.slice(1, 1000);
 
       const filteredData = slicedData
@@ -459,7 +481,8 @@ const DashboardView = ({ active }) => {
       if (countError) {
         throw new Error("ไม่สามารถตรวจสอบข้อมูลซ้ำได้: " + countError.message);
       }
-      if (count > 0) {
+      if (count && count > 0) {
+        // เพิ่มการตรวจสอบ
         alert(
           // [*** แก้ไข: Alert ***]
           `พบข้อมูลสำหรับวันที่ ${formatToFullThaiDate(
@@ -470,7 +493,7 @@ const DashboardView = ({ active }) => {
         return;
       }
 
-      const rowsToInsert = [];
+      const rowsToInsert: any[] = []; // ระบุ Type
       Object.entries(uploadFilesData).forEach(([fileKey, fileData]) => {
         fileData.forEach((item) => {
           rowsToInsert.push({
@@ -513,7 +536,8 @@ const DashboardView = ({ active }) => {
       // [*** แก้ไข: ตั้งค่าวันที่หลัก ***]
       setStartDate(uploadDate);
       setEndDate(uploadDate);
-    } catch (error) {
+    } catch (error: any) {
+      // ระบุ Type
       console.error(error);
       alert("เกิดข้อผิดพลาด: " + error.message);
     } finally {
@@ -523,9 +547,18 @@ const DashboardView = ({ active }) => {
 
   // Logic สรุปผล (ขั้นตอนที่ 1: รวมข้อมูลตามสังกัด)
   const aggregatedData = useMemo(() => {
-    const summary = new Map();
+    const summary = new Map<
+      string,
+      {
+        sumH: number;
+        sumI: number;
+        sumK: number;
+        sumM: number;
+        sumO: number;
+      }
+    >(); // ระบุ Type
 
-    let filterSet = null;
+    let filterSet: Set<string> | null = null; // ระบุ Type
     if (selectedFilter === "nakhon-sawan") {
       filterSet = nakhonSawanSet;
     } else if (selectedFilter === "uthai-thani") {
@@ -635,12 +668,16 @@ const DashboardView = ({ active }) => {
     return false; // ผ่านหมด
   }, [isSubmittingReport, reportTotalSum, modalData.summary.O]);
 
+  // ########## [แก้ไข TypeScript Error 7] ##########
   // ฟังก์ชันสำหรับเปิด Modal
-  const handleShowDetails = (compositeKey) => {
+  const handleShowDetails = (compositeKey: string) => {
     const [keyE, keyF] = compositeKey.split("||");
     const title = `รายละเอียด: ${keyE} - ${keyF}`;
 
-    const subSummaryMap = new Map();
+    const subSummaryMap = new Map<
+      string,
+      { H: number; M: number; O: number }
+    >(); // ระบุ Type
     const totalSummary = { H: 0, M: 0, O: 0 };
 
     supabaseData.forEach((item) => {
@@ -693,7 +730,11 @@ const DashboardView = ({ active }) => {
     setReportFormData(initialReportFormData);
   };
 
-  const handleReportFormChange = (e, key) => {
+  // ########## [แก้ไข TypeScript Error 8] ##########
+  const handleReportFormChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    key: string
+  ) => {
     const { value } = e.target;
     if (value === "" || /^[0-9\b]+$/.test(value)) {
       setReportFormData((prev) => ({
@@ -775,7 +816,8 @@ const DashboardView = ({ active }) => {
         )} สำเร็จ!`
       );
       handleCloseReportModal();
-    } catch (error) {
+    } catch (error: any) {
+      // ระบุ Type
       console.error("Error submitting report:", error);
       alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
     } finally {
@@ -886,7 +928,7 @@ const DashboardView = ({ active }) => {
                           <DatePicker
                             id="start-date"
                             selected={startDate}
-                            onChange={(date) => setStartDate(date)}
+                            onChange={(date: Date) => setStartDate(date)} // ระบุ Type
                             selectsStart
                             startDate={startDate}
                             endDate={endDate}
@@ -906,7 +948,7 @@ const DashboardView = ({ active }) => {
                           <DatePicker
                             id="end-date"
                             selected={endDate}
-                            onChange={(date) => setEndDate(date)}
+                            onChange={(date: Date) => setEndDate(date)} // ระบุ Type
                             selectsEnd
                             startDate={startDate}
                             endDate={endDate}
@@ -1199,7 +1241,11 @@ const DashboardView = ({ active }) => {
                 {/* --- 1. หัวข้อ --- */}
                 <h2 className="text-3xl font-bold text-gray-800 mb-2 text-center pt-8 px-8">
                   รายงานประสิทธิภาพการนำจ่าย EMS ในประเทศของที่ทำการในสังกัด{" "}
-                  {filterDisplayNames[selectedFilter]}
+                  {
+                    filterDisplayNames[
+                      selectedFilter as keyof typeof filterDisplayNames
+                    ]
+                  }
                 </h2>
 
                 {/* [*** นี่คือส่วนที่ปรับปรุงการแสดงวันที่ ***] */}
@@ -1412,7 +1458,7 @@ const DashboardView = ({ active }) => {
                     <tfoot className="bg-gray-100 border-t-2 border-gray-300">
                       <tr className="font-bold">
                         <td
-                          colSpan="2"
+                          colSpan={2}
                           className="px-6 py-4 text-right text-base text-gray-800 uppercase"
                         >
                           ยอดรวม (ที่ค้นพบ)
@@ -1494,7 +1540,7 @@ const DashboardView = ({ active }) => {
                         <DatePicker
                           id="upload-date"
                           selected={uploadDate}
-                          onChange={(date) => setUploadDate(date)}
+                          onChange={(date: Date) => setUploadDate(date)} // ระบุ Type
                           dateFormat="dd/MM/yyyy"
                           className="mt-1" // ใช้ CSS จาก datepicker.css
                           disabled={isUploading}
@@ -1670,7 +1716,7 @@ const DashboardView = ({ active }) => {
                       ) : (
                         <tr>
                           <td
-                            colSpan="5"
+                            colSpan={5}
                             className="px-4 py-3 text-center text-gray-500"
                           >
                             ไม่พบข้อมูลรายละเอียด
@@ -1681,7 +1727,7 @@ const DashboardView = ({ active }) => {
                     <tfoot className="bg-gray-100 border-t-2">
                       <tr className="font-bold">
                         <td
-                          colSpan="2"
+                          colSpan={2}
                           className="px-4 py-3 text-right text-gray-800"
                         >
                           ยอดรวม:
@@ -1764,7 +1810,7 @@ const DashboardView = ({ active }) => {
                       <DatePicker
                         id="report-date"
                         selected={reportDate}
-                        onChange={(date) => setReportDate(date)}
+                        onChange={(date: Date) => setReportDate(date)} // ระบุ Type
                         dateFormat="dd/MM/yyyy"
                         className="mt-1" // ใช้ CSS จาก datepicker.css
                         disabled={isSubmittingReport}
@@ -1865,13 +1911,14 @@ const DashboardView = ({ active }) => {
 // ######################################################################
 //   [*** แก้ไข: เพิ่มช่อง Search และปรับปรุง Logic การรวมยอด ***]
 // ######################################################################
-const NotesReportView = ({ active }) => {
-  const [allTableData, setAllTableData] = useState([]); // [แก้ไข] เปลี่ยนชื่อเป็น allTableData
+// ########## [แก้ไข TypeScript Error 9] ##########
+const NotesReportView = ({ active }: { active: boolean }) => {
+  const [allTableData, setAllTableData] = useState<any[]>([]); // [แก้ไข] เปลี่ยนชื่อเป็น allTableData, ระบุ Type
   const [isLoading, setIsLoading] = useState(false);
 
   // [ใหม่] State สำหรับ Modal ดูรายละเอียด
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [modalDetailData, setModalDetailData] = useState(null);
+  const [modalDetailData, setModalDetailData] = useState<any | null>(null); // ระบุ Type
 
   // State สำหรับ Filter (เหมือน Dashboard)
   const [selectedFilter, setSelectedFilter] = useState("all");
@@ -1880,15 +1927,18 @@ const NotesReportView = ({ active }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
   // [ใหม่] State สำหรับสรุปยอดรวม (สำหรับกราฟ)
-  const [notesSummary, setNotesSummary] = useState({ data: {}, total: 0 });
+  const [notesSummary, setNotesSummary] = useState<{
+    data: { [key: string]: number };
+    total: number;
+  }>({ data: {}, total: 0 }); // ระบุ Type
 
   // ใช้วันที่ของเมื่อวานเป็นค่าเริ่มต้น
-  const [startDate, setStartDate] = useState(() => {
+  const [startDate, setStartDate] = useState<Date | null>(() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
     return d;
   });
-  const [endDate, setEndDate] = useState(() => {
+  const [endDate, setEndDate] = useState<Date | null>(() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
     return d;
@@ -1896,7 +1946,12 @@ const NotesReportView = ({ active }) => {
 
   // [*** นี่คือส่วนที่แก้ไขหลัก ***]
   // ฟังก์ชันดึงข้อมูลที่ปรับปรุงใหม่ทั้งหมด
-  const fetchNotes = async (start, end, filter) => {
+  // ########## [แก้ไข TypeScript Error 10] ##########
+  const fetchNotes = async (
+    start: Date | null,
+    end: Date | null,
+    filter: string
+  ) => {
     if (!start || !end) return;
 
     setIsLoading(true);
@@ -1926,7 +1981,7 @@ const NotesReportView = ({ active }) => {
       if (officesError) throw officesError;
 
       // 3. สร้าง Filter Set (เหมือน Dashboard)
-      let filterSet = null;
+      let filterSet: Set<string> | null = null; // ระบุ Type
       if (filter === "nakhon-sawan") filterSet = nakhonSawanSet;
       else if (filter === "uthai-thani") filterSet = uthaiThaniSet;
       else if (filter === "kamphaeng-phet") filterSet = kamphaengPhetSet;
@@ -1939,7 +1994,7 @@ const NotesReportView = ({ active }) => {
       else if (filter === "sp-phitsanulok") filterSet = spPhitsanulokSet;
 
       // 4. กรองที่ทำการให้ไม่ซ้ำกัน (De-duplicate) และ "ต้องตรง Filter"
-      const uniqueOfficesMap = new Map();
+      const uniqueOfficesMap = new Map<string, string>(); // ระบุ Type
       (officesData || []).forEach((item) => {
         const pCode = String(item.cole);
         if (filterSet && !filterSet.has(pCode)) {
@@ -1953,11 +2008,18 @@ const NotesReportView = ({ active }) => {
       // 5. [*** REVISED LOGIC ***]
       // Aggregate notes *by postal code* for the date range and filter
 
-      const aggregatedNotesMap = new Map(); // Stores the *sum* for each office
+      const aggregatedNotesMap = new Map<
+        string,
+        {
+          total_notes: number;
+          notes_data: { [key: string]: number };
+          last_report_date: string;
+        }
+      >(); // ระบุ Type
       const grandTotalSummary = REPORT_REASONS.reduce(
-        (acc, r) => ({ ...acc, [r.key]: 0 }),
+        (acc: { [key: string]: number }, r) => ({ ...acc, [r.key]: 0 }),
         {}
-      );
+      ); // ระบุ Type
       let grandTotalCount = 0;
 
       (notesData || []).forEach((note) => {
@@ -1972,9 +2034,9 @@ const NotesReportView = ({ active }) => {
         const currentAgg = aggregatedNotesMap.get(note.postal_code) || {
           total_notes: 0,
           notes_data: REPORT_REASONS.reduce(
-            (acc, r) => ({ ...acc, [r.key]: 0 }),
+            (acc: { [key: string]: number }, r) => ({ ...acc, [r.key]: 0 }),
             {}
-          ),
+          ), // ระบุ Type
           last_report_date: note.report_date, // Start with this date
         };
 
@@ -1983,7 +2045,7 @@ const NotesReportView = ({ active }) => {
 
         Object.entries(note.notes_data).forEach(([key, value]) => {
           if (newNotesData.hasOwnProperty(key)) {
-            newNotesData[key] += parseInt(value) || 0;
+            newNotesData[key] += parseInt(String(value)) || 0; // แปลง value
           }
         });
 
@@ -2000,7 +2062,7 @@ const NotesReportView = ({ active }) => {
         // B. Process for Graph (grand total aggregation)
         Object.entries(note.notes_data).forEach(([key, value]) => {
           if (grandTotalSummary.hasOwnProperty(key)) {
-            const numValue = parseInt(value) || 0;
+            const numValue = parseInt(String(value)) || 0; // แปลง value
             grandTotalSummary[key] += numValue;
             grandTotalCount += numValue;
           }
@@ -2010,12 +2072,12 @@ const NotesReportView = ({ active }) => {
       setNotesSummary({ data: grandTotalSummary, total: grandTotalCount });
 
       // 6. สร้างข้อมูลสำหรับตาราง (Join กัน)
-      const finalTableData = [];
+      const finalTableData: any[] = []; // ระบุ Type
       uniqueOfficesMap.forEach((office_name, postal_code) => {
         const aggregatedReport = aggregatedNotesMap.get(postal_code); // Get the *sum*
 
         // [ใหม่] สร้าง Object ที่มีข้อมูลหมายเหตุ (สำหรับ 21 คอลัมน์)
-        const notesDetail = {};
+        const notesDetail: { [key: string]: number } = {}; // ระบุ Type
         // If reported, fill details
         if (aggregatedReport) {
           REPORT_REASONS.forEach((reason) => {
@@ -2050,7 +2112,8 @@ const NotesReportView = ({ active }) => {
       });
 
       setAllTableData(finalTableData); // [แก้ไข]
-    } catch (error) {
+    } catch (error: any) {
+      // ระบุ Type
       console.error("Error fetching notes data:", error);
       alert("ไม่สามารถดึงข้อมูลได้: " + error.message);
     } finally {
@@ -2124,17 +2187,21 @@ const NotesReportView = ({ active }) => {
     return sortedNotes.slice(0, 3); // Get Top 3
   }, [notesSummary]);
 
+  // ########## [แก้ไข TypeScript Error 11] ##########
   // [ใหม่] ฟังก์ชันสำหรับ Modal
-  const handleShowReportDetails = (data) => {
+  const handleShowReportDetails = (data: any) => {
     // แปลงข้อมูลแถวกลับเป็น object ที่ modal รู้จัก
     setModalDetailData({
       office_name: data.office_name,
       // report_date: data.report_date, // [*** แก้ไข ***] ไม่ใช้วันที่ล่าสุด
       total_notes: data.total_notes, // [*** แก้ไข ***] นี่คือยอดรวม
-      notes_data: REPORT_REASONS.reduce((acc, reason) => {
-        acc[reason.key] = data[reason.key] || 0; // [*** แก้ไข ***] นี่คือยอดรวม
-        return acc;
-      }, {}),
+      notes_data: REPORT_REASONS.reduce(
+        (acc: { [key: string]: number }, reason) => {
+          acc[reason.key] = data[reason.key] || 0; // [*** แก้ไข ***] นี่คือยอดรวม
+          return acc;
+        },
+        {}
+      ), // ระบุ Type
     });
     setIsDetailModalOpen(true);
   };
@@ -2155,7 +2222,11 @@ const NotesReportView = ({ active }) => {
             </h1>
             <p className="text-lg text-gray-500 mt-1">
               ตรวจสอบสถานะการรายงานของที่ทำการในสังกัด{" "}
-              {filterDisplayNames[selectedFilter]}
+              {
+                filterDisplayNames[
+                  selectedFilter as keyof typeof filterDisplayNames
+                ]
+              }
             </p>
           </div>
 
@@ -2176,7 +2247,7 @@ const NotesReportView = ({ active }) => {
                 <DatePicker
                   id="notes-start-date"
                   selected={startDate}
-                  onChange={(date) => setStartDate(date)}
+                  onChange={(date: Date) => setStartDate(date)} // ระบุ Type
                   selectsStart
                   startDate={startDate}
                   endDate={endDate}
@@ -2194,7 +2265,7 @@ const NotesReportView = ({ active }) => {
                 <DatePicker
                   id="notes-end-date"
                   selected={endDate}
-                  onChange={(date) => setEndDate(date)}
+                  onChange={(date: Date) => setEndDate(date)} // ระบุ Type
                   selectsEnd
                   startDate={startDate}
                   endDate={endDate}
@@ -2631,7 +2702,13 @@ const NotesReportView = ({ active }) => {
           {!isLoading && notesSummary.total > 0 && (
             <div className="bg-white rounded-lg shadow-xl p-6 mt-8">
               <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                สรุปหมายเหตุรวม (สังกัด {filterDisplayNames[selectedFilter]})
+                สรุปหมายเหตุรวม (สังกัด{" "}
+                {
+                  filterDisplayNames[
+                    selectedFilter as keyof typeof filterDisplayNames
+                  ]
+                }
+                )
               </h2>
               <h3 className="text-lg text-gray-600 mb-6">
                 ยอดรวม {notesSummary.total.toLocaleString()} รายการ
