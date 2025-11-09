@@ -952,7 +952,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                             selectsEnd
                             startDate={startDate}
                             endDate={endDate}
-                            minDate={startDate} // ป้องกันการเลือกวันที่สิ้นสุดก่อนวันเริ่ม
+                            minDate={startDate || undefined} // ป้องกันการเลือกวันที่สิ้นสุดก่อนวันเริ่ม
                             dateFormat="dd/MM/yyyy"
                             className="mt-1"
                           />
@@ -2269,7 +2269,7 @@ const NotesReportView = ({ active }: { active: boolean }) => {
                   selectsEnd
                   startDate={startDate}
                   endDate={endDate}
-                  minDate={startDate}
+                  minDate={startDate || undefined}
                   dateFormat="dd/MM/yyyy"
                   className="mt-1"
                 />
