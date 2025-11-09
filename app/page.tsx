@@ -928,7 +928,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                           <DatePicker
                             id="start-date"
                             selected={startDate}
-                            onChange={(date: Date) => setStartDate(date)} // ระบุ Type
+                            onChange={(date: Date | null) => setStartDate(date)}
                             selectsStart
                             startDate={startDate}
                             endDate={endDate}
@@ -948,7 +948,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                           <DatePicker
                             id="end-date"
                             selected={endDate}
-                            onChange={(date: Date) => setEndDate(date)} // ระบุ Type
+                            onChange={(date: Date | null) => setEndDate(date)}
                             selectsEnd
                             startDate={startDate}
                             endDate={endDate}
@@ -1540,7 +1540,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                         <DatePicker
                           id="upload-date"
                           selected={uploadDate}
-                          onChange={(date: Date) => setUploadDate(date)} // ระบุ Type
+                          onChange={(date: Date | null) => setUploadDate(date)}
                           dateFormat="dd/MM/yyyy"
                           className="mt-1" // ใช้ CSS จาก datepicker.css
                           disabled={isUploading}
@@ -1810,7 +1810,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                       <DatePicker
                         id="report-date"
                         selected={reportDate}
-                        onChange={(date: Date) => setReportDate(date)} // ระบุ Type
+                        onChange={(date: Date | null) => setReportDate(date)}
                         dateFormat="dd/MM/yyyy"
                         className="mt-1" // ใช้ CSS จาก datepicker.css
                         disabled={isSubmittingReport}
@@ -2247,7 +2247,7 @@ const NotesReportView = ({ active }: { active: boolean }) => {
                 <DatePicker
                   id="notes-start-date"
                   selected={startDate}
-                  onChange={(date: Date) => setStartDate(date)} // ระบุ Type
+                  onChange={(date: Date | null) => setStartDate(date)}
                   selectsStart
                   startDate={startDate}
                   endDate={endDate}
@@ -2265,7 +2265,7 @@ const NotesReportView = ({ active }: { active: boolean }) => {
                 <DatePicker
                   id="notes-end-date"
                   selected={endDate}
-                  onChange={(date: Date) => setEndDate(date)} // ระบุ Type
+                  onChange={(date: Date | null) => setEndDate(date)}
                   selectsEnd
                   startDate={startDate}
                   endDate={endDate}
