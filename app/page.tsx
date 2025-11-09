@@ -2,126 +2,43 @@
 
 import { useState, useMemo, useEffect } from "react";
 import * as XLSX from "xlsx";
+// --- [แก้ไข] Import client จากไฟล์ที่เราสร้าง ---
+import { supabase } from "../lib/supabaseClient"; // (ถ้าโฟลเดอร์ lib อยู่ระดับเดียวกับ app ให้ใช้ path นี้)
+
+// --- Import DatePicker ---
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+// --- Import CSS ที่เราเพิ่งสร้าง ---
+import "./datepicker.css"; // (ถ้าคุณเก็บไว้ที่อื่น ให้แก้ Path ตรงนี้)
 
 // กำหนด Key ของไฟล์ทั้ง 5
 const FILE_KEYS = ["E(E)", "E(J)", "E(W)", "E-BCOD", "E-RCOD"];
 
-// [จุดที่ 1] สร้าง Map รหัส QMS
-const qmsMap = {
-  "60000": "373",
-  "60001": "970",
-  "60002": "163",
-  "60110": "1064",
-  "60120": "194",
-  "60130": "629",
-  "60140": "267",
-  "60150": "826",
-  "60160": "296",
-  "60170": "65",
-  "60180": "426",
-  "60190": "266",
-  "60210": "179",
-  "60220": "694",
-  "60230": "49",
-  "60240": "1070",
-  "60250": "278",
-  "60260": "161",
-  "428": "22802",
-  "61000": "1153",
-  "61110": "1058",
-  "61120": "284",
-  "61130": "1052",
-  "61140": "525",
-  "61150": "972",
-  "61160": "832",
-  "61170": "83",
-  "61180": "731",
-  "62000": "33",
-  "62110": "646",
-  "62120": "96",
-  "62130": "70",
-  "62140": "962",
-  "62150": "356",
-  "62160": "585",
-  "62170": "829",
-  "62180": "109",
-  "62190": "337",
-  "62210": "790",
-  "63000": "264",
-  "63110": "760",
-  "63111": "21894",
-  "63120": "503",
-  "63130": "1001",
-  "63140": "753",
-  "63150": "321",
-  "63160": "626",
-  "63170": "1157",
-  "63180": "21889",
-  "58": "",
-  "154": "",
-  "64000": "1026",
-  "64110": "969",
-  "64120": "929",
-  "64130": "927",
-  "64140": "500",
-  "64150": "345",
-  "64160": "129",
-  "64170": "1",
-  "64180": "912",
-  "64190": "293",
-  "64210": "732",
-  "64220": "528",
-  "64230": "536",
-  "65000": "670",
-  "65001": "1134",
-  "65010": "21596",
-  "65110": "436",
-  "65120": "367",
-  "65130": "856",
-  "65140": "474",
-  "65150": "634",
-  "65160": "871",
-  "65170": "188",
-  "65180": "1061",
-  "65190": "415",
-  "65210": "414",
-  "65220": "62",
-  "65230": "873",
-  "65240": "195",
-  "66000": "665",
-  "66110": "262",
-  "66120": "473",
-  "66130": "682",
-  "66140": "1000",
-  "66150": "280",
-  "66160": "995",
-  "66170": "1113",
-  "66180": "855",
-  "66190": "687",
-  "66210": "854",
-  "66220": "32",
-  "66230": "7",
-  "67000": "679",
-  "67110": "1095",
-  "67120": "1094",
-  "67130": "881",
-  "67140": "1072",
-  "67150": "176",
-  "67160": "545",
-  "67170": "910",
-  "67180": "672",
-  "67190": "218",
-  "67210": "852",
-  "67220": "382",
-  "67230": "862",
-  "67240": "861",
-  "67250": "306",
-  "67260": "409",
-  "67270": "79",
-  "67280": "135",
-  "60010": "899",
-  "287": "22115",
-};
+// --- [ใหม่] สร้าง Array สำหรับฟอร์มหมายเหตุ ---
+const REPORT_REASONS = [
+  { key: "0", label: "ออกใบแจ้ง" },
+  { key: "1", label: "จ่าหน้าไม่ชัดเจน" },
+  { key: "2", label: "ไม่มีเลขบ้านตามจ่าหน้า" },
+  { key: "3", label: "ผู้รับปฏิเสธการรับ" },
+  { key: "4", label: "ไม่มีผู้รับตามจ่าหน้า" },
+  { key: "5", label: "ไม่มารับตามกำหนด" },
+  { key: "7", label: "ย้าย/ไม่ทราบที่อยู่ใหม่" },
+  { key: "8", label: "บ้านปิด" },
+  { key: "A1", label: "สิ่งของถึงที่ทำการปลายทาง คาดว่าจะได้รับในวันถัดไป" },
+  { key: "A2", label: "สิ่งของถึงที่ทำการปลายทาง คาดว่าจะได้รับใน 1 - 2 วัน" },
+  { key: "A3", label: "สิ่งของถึงที่ทำการปลายทาง คาดว่าจะได้รับใน 3 - 4 วัน" },
+  { key: "A4", label: "สิ่งของถึงที่ทำการปลายทาง คาดว่าจะได้รับใน 5 - 6 วัน" },
+  { key: "C", label: "ส่วนราชการ/บริษัท หยุด" },
+  { key: "F", label: "รอจ่าย ณ ที่ทำการ" },
+  { key: "G", label: "รอจ่าย ณ ตู้ไปรษณีย์เช่า (ออกใบแจ้ง)" },
+  { key: "I", label: "โทรศัพท์ติดต่อผู้รับไม่ได้/ผู้รับไม่รับสาย" },
+  { key: "J", label: "ขอรับเองที่ไปรษณีย์" },
+  { key: "K", label: "ส่งคืนต้นทาง" },
+  { key: "M", label: "ผู้ฝากส่งกำหนดวัน/เวลา นำจ่าย" },
+  { key: "O", label: "โทรศัพท์ติดต่อผู้รับ/ผู้ฝากแล้ว ให้เก็บรอจ่าย" },
+  { key: "Q", label: "อยู่ระหว่างปรับปรุงข้อมูลสิ่งของเก็บเงินปลายทาง" },
+];
+// ------------------------------------------
 
 // สร้าง Set รหัสไปรษณีย์ทั้งหมด
 const nakhonSawanCodes = [
@@ -285,7 +202,7 @@ const filterDisplayNames = {
   "sp-phitsanulok": "ศป.พิษณุโลก",
 };
 
-// สร้าง Array สำหรับ วัน/เดือน/ปี
+// [หมายเหตุ] ส่วนนี้สำหรับ Modal อัปโหลด (ยังคงต้องใช้)
 const days = Array.from({ length: 31 }, (_, i) => i + 1);
 const months = [
   { value: 1, name: "มกราคม" },
@@ -312,56 +229,142 @@ const getCodStatus = (code) => {
   return "ไม่";
 };
 
-export default function Home() {
-  const [filesData, setFilesData] = useState({});
-  const [fileNames, setFileNames] = useState({});
+// [แก้ไข] ฟังก์ชันช่วยแปลงวันที่ (Date object) เป็น YYYY-MM-DD (AD)
+const formatDateToISO = (date) => {
+  if (!date) return null;
+  const yearAD = date.getFullYear();
+  const month = date.getMonth() + 1; // getMonth() returns 0-11
+  const day = date.getDate();
+  const pad = (num) => String(num).padStart(2, "0");
+  return `${yearAD}-${pad(month)}-${pad(day)}`;
+};
 
-  // State สำหรับ Modal
+// [ใหม่] ฟังก์ชันแปลงวันที่เป็น พ.ศ. (สำหรับแสดงผล)
+const formatToFullThaiDate = (date) => {
+  if (!date) return "";
+  const day = date.getDate();
+  const monthValue = date.getMonth() + 1;
+  const yearBE = date.getFullYear() + 543;
+  const monthName = months.find((m) => m.value === monthValue)?.name || "";
+  return `${day} ${monthName} ${yearBE}`;
+};
+
+// [ใหม่] สร้าง State เริ่มต้นสำหรับฟอร์มหมายเหตุ
+const initialReportFormData = REPORT_REASONS.reduce((acc, reason) => {
+  acc[reason.key] = ""; // เริ่มด้วยค่าว่าง
+  return acc;
+}, {});
+
+export default function Home() {
+  // State สำหรับเก็บข้อมูลที่ดึงจาก Supabase
+  const [supabaseData, setSupabaseData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // State สำหรับ Modal อัปโหลด (ยังคงเหมือนเดิม)
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadFilesData, setUploadFilesData] = useState({});
+  const [uploadFileNames, setUploadFileNames] = useState({});
+  const [uploadDay, setUploadDay] = useState(1);
+  const [uploadMonth, setUploadMonth] = useState(1);
+  const [uploadYear, setUploadYear] = useState(years[0]);
+
+  // State สำหรับ Modal รายละเอียด
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalData, setModalData] = useState({
     title: "",
     details: [],
     summary: { H: 0, M: 0, O: 0 },
-    qmsCode: "",
   });
+
+  // --- [ใหม่] State สำหรับ Modal รายงานหมายเหตุ ---
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportDate, setReportDate] = useState(null);
+  const [reportFormData, setReportFormData] = useState(initialReportFormData);
+  // ------------------------------------------------
 
   // State สำหรับ Filter ที่เลือก
   const [selectedFilter, setSelectedFilter] = useState("all");
 
+  // State สำหรับการค้นหา
+  const [searchTerm, setSearchTerm] = useState("");
+
   // State สำหรับ เปิด/ปิด ส่วนควบคุม
   const [isControlsOpen, setIsControlsOpen] = useState(true);
 
-  // State วัน/เดือน/ปี (ตั้งค่าเริ่มต้นเป็นค่าคงที่)
-  const [selectedDay, setSelectedDay] = useState(1);
-  const [selectedMonth, setSelectedMonth] = useState(1);
-  const [selectedYear, setSelectedYear] = useState(years[0]); // 2568
+  // --- [ใหม่] State วัน/เดือน/ปี (สำหรับ Fetch ข้อมูล) ---
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  // ---
 
-  // useEffect เพื่อตั้งค่าเป็น "เมื่อวานนี้" (แก้ Hydration Error)
+  // [แก้ไข] useEffect เพื่อตั้งค่าเป็น "เมื่อวานนี้" (แก้ Hydration Error)
   useEffect(() => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
 
+    // [แก้ไข] ตั้งค่าวันที่สำหรับหน้าหลัก (Date Range) เป็น "เมื่อวานนี้"
+    setStartDate(new Date(yesterday)); // สร้าง Date object ใหม่
+    setEndDate(new Date(yesterday)); // สร้าง Date object ใหม่
+
+    // [ใหม่] ตั้งค่าวันที่สำหรับ Modal รายงานหมายเหตุ
+    setReportDate(new Date(yesterday));
+
+    // ตั้งค่าวันที่เริ่มต้นสำหรับ Modal อัปโหลด (Single Day)
     const day = yesterday.getDate();
     const month = yesterday.getMonth() + 1;
     let yearBE = yesterday.getFullYear() + 543;
-
     if (!years.includes(yearBE)) {
       yearBE = years[0];
     }
+    setUploadDay(day);
+    setUploadMonth(month);
+    setUploadYear(yearBE);
+  }, []);
 
-    setSelectedDay(day);
-    setSelectedMonth(month);
-    setSelectedYear(yearBE);
-  }, []); // [] ทำงาน 1 ครั้งหลังโหลด
+  // [แก้ไข] ฟังก์ชันสำหรับดึงข้อมูลจาก Supabase (ใช้ Date Range)
+  const fetchData = async (start, end) => {
+    setIsLoading(true);
+    setSupabaseData([]); // เคลียร์ข้อมูลเก่าก่อน
+
+    if (!start || !end) {
+      setIsLoading(false);
+      return; // ไม่ต้องดึงถ้าวันที่ไม่ครบ
+    }
+
+    const isoStartDate = formatDateToISO(start);
+    const isoEndDate = formatDateToISO(end);
+
+    console.log(`Fetching data from ${isoStartDate} to ${isoEndDate}`);
+
+    const { data, error } = await supabase
+      .from("delivery_data")
+      .select("*")
+      .gte("report_date", isoStartDate) // มากกว่าหรือเท่ากับ
+      .lte("report_date", isoEndDate); // น้อยกว่าหรือเท่ากับ
+
+    if (error) {
+      console.error("Error fetching data:", error);
+      alert("ไม่สามารถดึงข้อมูลได้: " + error.message);
+    } else {
+      setSupabaseData(data || []);
+    }
+    setIsLoading(false);
+  };
+
+  // [แก้ไข] useEffect สำหรับดึงข้อมูลเมื่อวันที่ (หน้าหลัก) เปลี่ยน
+  useEffect(() => {
+    fetchData(startDate, endDate);
+  }, [startDate, endDate]);
 
   /**
-   * ฟังก์ชันสำหรับจัดการการอัปโหลดไฟล์ (เหมือนเดิม)
+   * ฟังก์ชันสำหรับจัดการการอัปโหลดไฟล์ (ใน Modal อัปโหลด)
+   * (โค้ดส่วนนี้ไม่เปลี่ยนแปลง)
    */
-  const handleFileUpload = (e, fileKey) => {
+  const handleUploadFileChange = (e, fileKey) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    setFileNames((prev) => ({ ...prev, [fileKey]: file.name }));
+    setUploadFileNames((prev) => ({ ...prev, [fileKey]: file.name }));
     const reader = new FileReader();
     reader.onload = (event) => {
       const buffer = event.target.result;
@@ -372,17 +375,28 @@ export default function Home() {
       const slicedData = jsonData.slice(1, 1000);
 
       const filteredData = slicedData
-        .map((row) => ({
-          colE: row[4],
-          colF: row[5],
-          colD: row[3],
-          colG: row[6],
-          valueH: row[7],
-          valueI: row[8],
-          valueK: row[10],
-          valueM: row[12],
-          valueO: row[14],
-        }))
+        .map((row) => {
+          let codRaw = String(row[6]).toUpperCase();
+          if (
+            !codRaw ||
+            codRaw === "NULL" ||
+            codRaw === "UNDEFINED" ||
+            codRaw.trim() === "N"
+          ) {
+            codRaw = "N";
+          }
+          return {
+            colE: row[4],
+            colF: row[5],
+            colD: row[3] ? String(row[3]).replace(/\s/g, "") : "N/A",
+            colG: codRaw,
+            valueH: row[7],
+            valueI: row[8],
+            valueK: row[10],
+            valueM: row[12],
+            valueO: row[14],
+          };
+        })
         .filter(
           (item) =>
             item.colE !== null &&
@@ -393,17 +407,126 @@ export default function Home() {
             item.colF !== ""
         );
 
-      setFilesData((prev) => ({ ...prev, [fileKey]: filteredData }));
+      setUploadFilesData((prev) => ({ ...prev, [fileKey]: filteredData }));
     };
     reader.readAsArrayBuffer(file);
   };
 
   /**
-   * Logic สรุปผล (เหมือนเดิม)
+   * [เวอร์ชันล่าสุด] ฟังก์ชันสำหรับยืนยันการอัปโหลด (ป้องกันการอัปโหลดซ้ำ)
+   * (โค้ดส่วนนี้ไม่เปลี่ยนแปลง)
    */
-  const summaryData = useMemo(() => {
+  const handleSubmitUpload = async () => {
+    const fileKeys = Object.keys(uploadFilesData);
+    if (fileKeys.length === 0) {
+      alert("กรุณาอัปโหลดไฟล์อย่างน้อย 1 ไฟล์");
+      return;
+    }
+    if (fileKeys.length < FILE_KEYS.length) {
+      if (
+        !window.confirm(
+          `คุณอัปโหลดเพียง ${fileKeys.length} ไฟล์ (จาก ${FILE_KEYS.length} ไฟล์) ข้อมูลอาจไม่สมบูรณ์ ยืนยันที่จะอัปโหลดหรือไม่?`
+        )
+      ) {
+        return;
+      }
+    }
+
+    setIsUploading(true);
+
+    try {
+      // [หมายเหตุ] ฟังก์ชันนี้ยังคงใช้ formatDateToISO แบบเดิม (รับ d,m,y)
+      // เราต้องสร้างฟังก์ชันนั้นขึ้นมาใหม่ชั่วคราว
+      const formatUploadDateToISO = (day, month, yearBE) => {
+        const yearAD = yearBE - 543;
+        const pad = (num) => String(num).padStart(2, "0");
+        return `${yearAD}-${pad(month)}-${pad(day)}`;
+      };
+      const reportDate = formatUploadDateToISO(
+        uploadDay,
+        uploadMonth,
+        uploadYear
+      );
+
+      // 1. ตรวจสอบข้อมูลซ้ำ
+      console.log(`Checking for existing data on ${reportDate}...`);
+      const { count, error: countError } = await supabase
+        .from("delivery_data")
+        .select("id", { count: "exact", head: true })
+        .eq("report_date", reportDate);
+
+      if (countError) {
+        throw new Error("ไม่สามารถตรวจสอบข้อมูลซ้ำได้: " + countError.message);
+      }
+      if (count > 0) {
+        alert(
+          `พบข้อมูลสำหรับวันที่ ${uploadDay}/${uploadMonth}/${uploadYear} อยู่ในระบบแล้ว\n(ระบบไม่อนุญาตให้อัปโหลดทับ) กรุณาเลือกวันอื่น`
+        );
+        setIsUploading(false);
+        return;
+      }
+
+      // 2. เตรียมข้อมูลใหม่
+      const rowsToInsert = [];
+      Object.entries(uploadFilesData).forEach(([fileKey, fileData]) => {
+        fileData.forEach((item) => {
+          rowsToInsert.push({
+            report_date: reportDate,
+            file_key: fileKey,
+            cole: item.colE,
+            colf: item.colF,
+            cold: item.colD,
+            colg: item.colG,
+            valueh: parseFloat(item.valueH) || 0,
+            valuei: parseFloat(item.valueI) || 0,
+            valuek: parseFloat(item.valueK) || 0,
+            valuem: parseFloat(item.valueM) || 0,
+            valueo: parseFloat(item.valueO) || 0,
+          });
+        });
+      });
+      if (rowsToInsert.length === 0) {
+        throw new Error("ไม่พบข้อมูลที่จะอัปโหลด (ไฟล์อาจจะว่างเปล่า)");
+      }
+
+      // 3. อัปโหลด
+      console.log(`Inserting ${rowsToInsert.length} rows...`);
+      const { error: insertError } = await supabase
+        .from("delivery_data")
+        .insert(rowsToInsert);
+      if (insertError) {
+        throw new Error("ไม่สามารถอัปโหลดข้อมูลได้: " + insertError.message);
+      }
+
+      alert(
+        `อัปโหลดข้อมูลสำหรับวันที่ ${uploadDay}/${uploadMonth}/${uploadYear} สำเร็จ! (${rowsToInsert.length} รายการ)`
+      );
+
+      // 4. ปิด Modal
+      setIsUploadModalOpen(false);
+      setUploadFilesData({});
+      setUploadFileNames({});
+
+      // 5. สั่งให้หน้าหลัก Fetch ข้อมูลใหม่ (ให้ไปที่วันที่เพิ่งอัปโหลด)
+      const uploadedDate = new Date(reportDate + "T00:00:00"); // แปลง ISO กลับเป็น Date
+      setStartDate(uploadedDate);
+      setEndDate(uploadedDate);
+    } catch (error) {
+      console.error(error);
+      alert("เกิดข้อผิดพลาด: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  /**
+   * Logic สรุปผล (ขั้นตอนที่ 1: รวมข้อมูลตามสังกัด)
+   * (โค้ดส่วนนี้ไม่เปลี่ยนแปลง)
+   */
+  const aggregatedData = useMemo(() => {
     const summary = new Map();
 
+    // 1. เลือก Set ฟิลเตอร์
     let filterSet = null;
     if (selectedFilter === "nakhon-sawan") {
       filterSet = nakhonSawanSet;
@@ -427,46 +550,82 @@ export default function Home() {
       filterSet = spPhitsanulokSet;
     }
 
-    Object.values(filesData).forEach((fileData) => {
-      fileData.forEach((item) => {
-        if (filterSet && !filterSet.has(String(item.colE))) {
-          return;
-        }
+    // 2. วนลูปจาก supabaseData
+    supabaseData.forEach((item) => {
+      // 3. ตรวจสอบฟิลเตอร์ (ใช้ cole)
+      if (filterSet && !filterSet.has(String(item.cole))) {
+        return;
+      }
 
-        const keyE = String(item.colE);
-        const keyF = String(item.colF);
-        const compositeKey = `${keyE}||${keyF}`;
+      // 4. สร้าง Key (ใช้ cole, colf)
+      const keyE = String(item.cole);
+      const keyF = String(item.colf);
+      const compositeKey = `${keyE}||${keyF}`;
 
-        const valueH = parseFloat(item.valueH) || 0;
-        const valueI = parseFloat(item.valueI) || 0;
-        const valueK = parseFloat(item.valueK) || 0;
-        const valueM = parseFloat(item.valueM) || 0;
-        const valueO = parseFloat(item.valueO) || 0;
+      // 5. ดึงค่า (ใช้ valueh, valuei, valuek, valuem, valueo)
+      const valueH = item.valueh || 0;
+      const valueI = item.valuei || 0;
+      const valueK = item.valuek || 0;
+      const valueM = item.valuem || 0;
+      const valueO = item.valueo || 0;
 
-        const currentSums = summary.get(compositeKey) || {
-          sumH: 0,
-          sumI: 0,
-          sumK: 0,
-          sumM: 0,
-          sumO: 0,
-        };
+      // 6. สรุปผล
+      const currentSums = summary.get(compositeKey) || {
+        sumH: 0,
+        sumI: 0,
+        sumK: 0,
+        sumM: 0,
+        sumO: 0,
+      };
 
-        summary.set(compositeKey, {
-          sumH: currentSums.sumH + valueH,
-          sumI: currentSums.sumI + valueI,
-          sumK: currentSums.sumK + valueK,
-          sumM: currentSums.sumM + valueM,
-          sumO: currentSums.sumO + valueO,
-        });
+      summary.set(compositeKey, {
+        sumH: currentSums.sumH + valueH,
+        sumI: currentSums.sumI + valueI,
+        sumK: currentSums.sumK + valueK,
+        sumM: currentSums.sumM + valueM,
+        sumO: currentSums.sumO + valueO,
       });
     });
-    return Array.from(summary.entries()).sort((a, b) =>
-      a[0].localeCompare(b[0])
-    );
-  }, [filesData, selectedFilter]);
+
+    // 7. แปลงเป็น Array (ยังไม่เรียงลำดับ)
+    return Array.from(summary.entries());
+  }, [supabaseData, selectedFilter]);
 
   /**
-   * Logic คำนวณ Grand Total (เหมือนเดิม)
+   * Logic สรุปผล (ขั้นตอนที่ 2: ค้นหาและเรียงลำดับ)
+   * (โค้ดส่วนนี้ไม่เปลี่ยนแปลง)
+   */
+  const summaryData = useMemo(() => {
+    // 1. กรองข้อมูลด้วย searchTerm
+    const filteredArray = aggregatedData.filter(([compositeKey, sums]) => {
+      if (searchTerm.trim() === "") {
+        return true; // ถ้าไม่มีการค้นหา ให้แสดงทั้งหมด
+      }
+      const [keyE, keyF] = compositeKey.split("||");
+      const lowerSearchTerm = searchTerm.toLowerCase().trim();
+
+      // ค้นหาทั้งรหัสไปรษณีย์ (keyE) และชื่อที่ทำการ (keyF)
+      return (
+        keyE.includes(lowerSearchTerm) ||
+        keyF.toLowerCase().includes(lowerSearchTerm)
+      );
+    });
+
+    // 2. เรียงลำดับข้อมูลที่กรองแล้ว
+    filteredArray.sort((a, b) => {
+      const sumsA = a[1];
+      const sumsB = b[1];
+      const rateA = sumsA.sumH > 0 ? sumsA.sumM / sumsA.sumH : 0;
+      const rateB = sumsB.sumH > 0 ? sumsB.sumM / sumsB.sumH : 0;
+      return rateA - rateB; // จากน้อยไปมาก
+    });
+
+    return filteredArray;
+  }, [aggregatedData, searchTerm]);
+
+  /**
+   * Logic คำนวณ Grand Total
+   * (โค้ดส่วนนี้ไม่เปลี่ยนแปลง)
    */
   const summaryKPIs = useMemo(() => {
     const totals = { H: 0, I: 0, K: 0, M: 0, O: 0 };
@@ -485,13 +644,21 @@ export default function Home() {
     return { ...totals, successRate: successRate, failureRate: failureRate };
   }, [summaryData]);
 
-  // หาชื่อเดือนที่เลือก (เหมือนเดิม)
-  const selectedMonthName = useMemo(() => {
-    return months.find((m) => m.value === selectedMonth)?.name || "";
-  }, [selectedMonth]);
+  // --- [ใหม่] Logic สำหรับคำนวณผลรวมใน Modal หมายเหตุ ---
+  const reportTotalSum = useMemo(() => {
+    // Get all the values from the form state
+    const values = Object.values(reportFormData);
+
+    // Sum them up. Parse empty strings as 0.
+    return values.reduce((acc, value) => {
+      return acc + (parseInt(value) || 0);
+    }, 0);
+  }, [reportFormData]);
+  // ----------------------------------------------------
 
   /**
-   * ฟังก์ชันสำหรับเปิด Modal (เหมือนเดิม)
+   * ฟังก์ชันสำหรับเปิด Modal (ใช้ lowercase)
+   * (โค้ดส่วนนี้ไม่เปลี่ยนแปลง)
    */
   const handleShowDetails = (compositeKey) => {
     const [keyE, keyF] = compositeKey.split("||");
@@ -499,49 +666,30 @@ export default function Home() {
 
     const subSummaryMap = new Map();
     const totalSummary = { H: 0, M: 0, O: 0 };
-    const qmsCode = qmsMap[keyE] || "";
 
-    Object.values(filesData).forEach((fileData) => {
-      fileData.forEach((item) => {
-        if (String(item.colE) === keyE && String(item.colF) === keyF) {
-          // [Logic ที่แก้ไข]
-          const service = item.colD
-            ? String(item.colD).replace(/\s/g, "")
-            : "N/A";
-
-          let codRaw = String(item.colG).toUpperCase();
-          if (
-            !codRaw ||
-            codRaw === "NULL" ||
-            codRaw === "UNDEFINED" ||
-            codRaw.trim() === "N"
-          ) {
-            codRaw = "N";
-          }
-          const codDisplay = getCodStatus(codRaw);
-
-          const subKey = `${service}||${codDisplay}||${codRaw}`;
-
-          const valueH = parseFloat(item.valueH) || 0;
-          const valueM = parseFloat(item.valueM) || 0;
-          const valueO = parseFloat(item.valueO) || 0;
-
-          totalSummary.H += valueH;
-          totalSummary.M += valueM;
-          totalSummary.O += valueO;
-
-          const currentSubSums = subSummaryMap.get(subKey) || {
-            H: 0,
-            M: 0,
-            O: 0,
-          };
-          subSummaryMap.set(subKey, {
-            H: currentSubSums.H + valueH,
-            M: currentSubSums.M + valueM,
-            O: currentSubSums.O + valueO,
-          });
-        }
-      });
+    supabaseData.forEach((item) => {
+      if (String(item.cole) === keyE && String(item.colf) === keyF) {
+        const service = item.cold;
+        const codRaw = item.colg;
+        const codDisplay = getCodStatus(codRaw);
+        const subKey = `${service}||${codDisplay}||${codRaw}`;
+        const valueH = item.valueh || 0;
+        const valueM = item.valuem || 0;
+        const valueO = item.valueo || 0;
+        totalSummary.H += valueH;
+        totalSummary.M += valueM;
+        totalSummary.O += valueO;
+        const currentSubSums = subSummaryMap.get(subKey) || {
+          H: 0,
+          M: 0,
+          O: 0,
+        };
+        subSummaryMap.set(subKey, {
+          H: currentSubSums.H + valueH,
+          M: currentSubSums.M + valueM,
+          O: currentSubSums.O + valueO,
+        });
+      }
     });
 
     const detailsArray = Array.from(subSummaryMap.entries()).map(
@@ -555,10 +703,45 @@ export default function Home() {
       title: title,
       details: detailsArray,
       summary: totalSummary,
-      qmsCode: qmsCode,
     });
     setIsModalOpen(true);
   };
+
+  // --- [ใหม่] ฟังก์ชันสำหรับ Modal หมายเหตุ ---
+  const handleOpenReportModal = () => {
+    setIsReportModalOpen(true);
+  };
+
+  // [*** นี่คือส่วนที่ปรับปรุง ***]
+  // สร้างฟังก์ชันใหม่สำหรับปิด Modal หมายเหตุ (เพื่อรีเซ็ตฟอร์ม)
+  const handleCloseReportModal = () => {
+    setIsReportModalOpen(false);
+    setReportFormData(initialReportFormData); // รีเซ็ตฟอร์มกลับเป็นค่าเริ่มต้น
+  };
+  // [*** จบส่วนที่ปรับปรุง ***]
+
+  const handleReportFormChange = (e, key) => {
+    const { value } = e.target;
+    // อนุญาตเฉพาะตัวเลข หรือค่าว่าง
+    if (value === "" || /^[0-9\b]+$/.test(value)) {
+      setReportFormData((prev) => ({
+        ...prev,
+        [key]: value,
+      }));
+    }
+  };
+
+  const handleSubmitReport = () => {
+    // TODO: ส่งข้อมูลนี้ไปบันทึก (เช่น Supabase)
+    console.log("Submitting report data:", {
+      date: reportDate,
+      office: modalData.title, // ส่งชื่อที่ทำการไปด้วย
+      data: reportFormData,
+    });
+    alert("บันทึกข้อมูลหมายเหตุสำเร็จ (จำลอง)");
+    handleCloseReportModal(); // [แก้ไข] ใช้ฟังก์ชันใหม่เพื่อปิดและรีเซ็ต
+  };
+  // ----------------------------------------
 
   // ----------------------------------------------------
   //   ส่วนหน้าเว็บ (JSX)
@@ -603,303 +786,389 @@ export default function Home() {
                 ></path>
               </svg>
             )}
-            {isControlsOpen ? "ซ่อน" : "แสดง"} ตั้งค่า (อัปโหลด/ฟิลเตอร์)
+            {isControlsOpen ? "ซ่อน" : "แสดง"} ตั้งค่า (ดึงข้อมูล/ฟิลเตอร์)
           </button>
         </div>
 
         {/* H1 และกล่องควบคุม */}
         {isControlsOpen && (
           <>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">
-              สรุปผลการนำจ่าย (Executive Dashboard)
-            </h1>
+            {/* === [หัวเรื่องที่อัปเดต] === */}
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-gray-800">
+                รายงานประสิทธิภาพการนำจ่าย EMS ในประเทศ
+              </h1>
+              <p className="text-lg text-gray-500 mt-1 flex items-center">
+                Made with
+                {/* ไอคอนหัวใจ */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 inline text-red-500 mx-1"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                by Megamind
+              </p>
+            </div>
+            {/* === [จบส่วนหัวเรื่อง] === */}
 
+            {/* === [UI ส่วนควบคุมที่ปรับปรุงใหม่] === */}
             <div className="mb-8">
-              {/* === ส่วนอัปโหลดไฟล์ === */}
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-                {FILE_KEYS.map((key) => (
-                  <div key={key} className="bg-white p-4 rounded-lg shadow-sm">
-                    <label
-                      htmlFor={`file-${key}`}
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      ไฟล์: <strong>{key}</strong>
-                    </label>
-                    <input
-                      id={`file-${key}`}
-                      type="file"
-                      accept=".xlsx, .xls"
-                      onChange={(e) => handleFileUpload(e, key)}
-                      className="block w-full text-sm text-gray-500
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-full file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-red-50 file:text-red-700
-                                hover:file:bg-red-100
-                                cursor-pointer"
-                    />
-                    {fileNames[key] && (
-                      <p
-                        className="text-xs text-green-600 mt-2 truncate"
-                        title={fileNames[key]}
+              {/* Grid Layout สองระดับ */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                {/* Card 1: เลือกวันที่ + ค้นหา (กว้าง 2 ส่วน) */}
+                <div className="bg-white p-6 rounded-lg shadow-sm lg:col-span-2">
+                  <h3 className="text-lg font-semibold text-gray-700 mb-1">
+                    🗓️ เลือกข้อมูล
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    เลือกช่วงวันที่และค้นหาข้อมูลที่ต้องการ
+                  </p>
+
+                  {/* แถวที่ 1: เลือกวันที่ */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* [ใหม่] DatePicker วันที่เริ่มต้น */}
+                    <div>
+                      <label
+                        htmlFor="start-date"
+                        className="block text-sm font-medium text-gray-700"
                       >
-                        {fileNames[key]}
-                      </p>
-                    )}
+                        วันที่เริ่มต้น
+                      </label>
+                      <DatePicker
+                        id="start-date"
+                        selected={startDate}
+                        onChange={(date) => setStartDate(date)}
+                        selectsStart
+                        startDate={startDate}
+                        endDate={endDate}
+                        dateFormat="dd/MM/yyyy"
+                        className="mt-1" // CSS ถูกควบคุมโดย datepicker.css
+                      />
+                    </div>
+
+                    {/* [ใหม่] DatePicker วันที่สิ้นสุด */}
+                    <div>
+                      <label
+                        htmlFor="end-date"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        วันที่สิ้นสุด
+                      </label>
+                      <DatePicker
+                        id="end-date"
+                        selected={endDate}
+                        onChange={(date) => setEndDate(date)}
+                        selectsEnd
+                        startDate={startDate}
+                        endDate={endDate}
+                        minDate={startDate} // ป้องกันการเลือกวันที่สิ้นสุดก่อนวันเริ่ม
+                        dateFormat="dd/MM/yyyy"
+                        className="mt-1"
+                      />
+                    </div>
                   </div>
-                ))}
+
+                  {/* แถวที่ 2: ช่องค้นหา */}
+                  <div className="w-full">
+                    <label htmlFor="search-input" className="sr-only">
+                      ค้นหา...
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5 text-gray-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
+                        </svg>
+                      </div>
+                      <input
+                        id="search-input"
+                        type="text"
+                        placeholder="ค้นหา (รหัสไปรษณีย์ / ที่ทำการ)..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base py-2.5 pl-10 pr-3"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 2: อัปโหลด (กว้าง 1 ส่วน) */}
+                <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col">
+                  <h3 className="text-lg font-semibold text-gray-700 mb-1">
+                    ☁️ อัปโหลดข้อมูล
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-4 flex-grow">
+                    เพิ่มข้อมูลชุดใหม่ (รายวัน) เข้าระบบ Supabase
+                  </p>
+                  <button
+                    onClick={() => {
+                      // [หมายเหตุ] Modal อัปโหลดยังคงใช้ค่าเริ่มต้น (เมื่อวานนี้)
+                      setIsUploadModalOpen(true);
+                    }}
+                    className="py-2.5 px-4 rounded-lg font-semibold transition-colors 
+                               bg-blue-600 text-white 
+                               hover:bg-blue-700 
+                               flex items-center justify-center
+                               shadow-md hover:shadow-lg w-full"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 mr-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    อัปโหลดข้อมูลใหม่
+                  </button>
+                </div>
               </div>
 
-              {/* ส่วน Filter */}
+              {/* Card 3: ตัวกรองสังกัด (เต็มความกว้าง) */}
               <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold text-gray-700 mb-4">
-                  ตัวกรอง
-                </h2>
-
-                {/* แถวที่ 1: สังกัด */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3">
-                    สังกัด
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setSelectedFilter("all")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                  🏢 กรองตามสังกัด
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedFilter("all")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "all"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      แสดงทั้งหมด
-                    </button>
-                    {/* ... (ปุ่ม Filter อื่นๆ) ... */}
-                    <button
-                      onClick={() => setSelectedFilter("nakhon-sawan")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                  >
+                    แสดงทั้งหมด
+                  </button>
+                  {/* ... (ปุ่ม Filter อื่นๆ) ... */}
+                  <button
+                    onClick={() => setSelectedFilter("nakhon-sawan")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "nakhon-sawan"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      ปจ.นครสวรรค์
-                    </button>
-                    <button
-                      onClick={() => setSelectedFilter("uthai-thani")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                  >
+                    ปจ.นครสวรรค์
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("uthai-thani")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "uthai-thani"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      ปจ.อุทัยธานี
-                    </button>
-                    <button
-                      onClick={() => setSelectedFilter("kamphaeng-phet")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                  >
+                    ปจ.อุทัยธานี
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("kamphaeng-phet")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "kamphaeng-phet"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      ปจ.กำแพงเพชร
-                    </button>
-                    <button
-                      onClick={() => setSelectedFilter("tak")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                  >
+                    ปจ.กำแพงเพชร
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("tak")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "tak"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      ปจ.ตาก
-                    </button>
-                    <button
-                      onClick={() => setSelectedFilter("sukhothai")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                  >
+                    ปจ.ตาก
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("sukhothai")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "sukhothai"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      ปจ.สุโขทัย
-                    </button>
-                    <button
-                      onClick={() => setSelectedFilter("phitsanulok")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                  >
+                    ปจ.สุโขทัย
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("phitsanulok")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "phitsanulok"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      ปจ.พิษณุโลก
-                    </button>
-                    <button
-                      onClick={() => setSelectedFilter("phichit")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                  >
+                    ปจ.พิษณุโลก
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("phichit")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "phichit"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      ปจ.พิจิตร
-                    </button>
-                    <button
-                      onClick={() => setSelectedFilter("phetchabun")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                  >
+                    ปจ.พิจิตร
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("phetchabun")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "phetchabun"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      ปจ.เพชรบูรณ์
-                    </button>
-                    <button
-                      onClick={() => setSelectedFilter("sp-nakhon-sawan")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                  >
+                    ปจ.เพชรบูรณ์
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("sp-nakhon-sawan")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "sp-nakhon-sawan"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      ศป.นครสวรรค์
-                    </button>
-                    <button
-                      onClick={() => setSelectedFilter("sp-phitsanulok")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                  >
+                    ศป.นครสวรรค์
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("sp-phitsanulok")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
                         ${
                           selectedFilter === "sp-phitsanulok"
                             ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }
                       `}
-                    >
-                      ศป.พิษณุโลก
-                    </button>
-                  </div>
-                </div>
-
-                {/* แถวที่ 2: วันที่ */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3">
-                    วันที่
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Day */}
-                    <div>
-                      <label
-                        htmlFor="day-select"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        วันที่
-                      </label>
-                      <select
-                        id="day-select"
-                        value={selectedDay}
-                        onChange={(e) => setSelectedDay(Number(e.target.value))}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base py-2.5"
-                      >
-                        {days.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {/* Month */}
-                    <div>
-                      <label
-                        htmlFor="month-select"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        เดือน
-                      </label>
-                      <select
-                        id="month-select"
-                        value={selectedMonth}
-                        onChange={(e) =>
-                          setSelectedMonth(Number(e.target.value))
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base py-2.5"
-                      >
-                        {months.map((m) => (
-                          <option key={m.value} value={m.value}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {/* Year */}
-                    <div>
-                      <label
-                        htmlFor="year-select"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        ปี พ.ศ.
-                      </label>
-                      <select
-                        id="year-select"
-                        value={selectedYear}
-                        onChange={(e) =>
-                          setSelectedYear(Number(e.target.value))
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base py-2.5"
-                      >
-                        {years.map((y) => (
-                          <option key={y} value={y}>
-                            {y}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                  >
+                    ศป.พิษณุโลก
+                  </button>
                 </div>
               </div>
             </div>
+            {/* === [*** จบส่วน UI ใหม่ ***] === */}
           </>
         )}
 
-        {/* ข้อความกรณี Filter แล้วไม่พบข้อมูล */}
-        {filesData["E(E)"] && summaryData.length === 0 && (
+        {/* สถานะกำลังโหลด (เพิ่มไอคอน) */}
+        {isLoading && (
+          <div className="mb-8 bg-white p-12 rounded-lg shadow-sm text-center flex flex-col items-center justify-center">
+            {/* ไอคอน Spinner */}
+            <svg
+              className="animate-spin h-12 w-12 text-red-600 mb-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+
+            {/* ข้อความ */}
+            <h2 className="text-xl font-semibold text-gray-700">
+              กำลังดึงข้อมูลจาก Supabase...
+            </h2>
+          </div>
+        )}
+
+        {/* [แก้ไข] ข้อความกรณีไม่พบข้อมูล (ดึงข้อมูลแล้วไม่มีเลย) */}
+        {!isLoading && aggregatedData.length === 0 && (
           <div className="mb-8 bg-white p-6 rounded-lg shadow-sm text-center">
             <h2 className="text-xl font-semibold text-gray-700">ไม่พบข้อมูล</h2>
             <p className="text-gray-500">
-              กรุณาอัปโหลดไฟล์ หรือเลือกตัวกรองอื่น
+              ไม่พบข้อมูลสำหรับช่วงวันที่ที่เลือกในฐานข้อมูล กรุณาใช้ปุ่ม
+              "อัปโหลดข้อมูลใหม่"
             </p>
           </div>
         )}
 
-        {/* กล่องรายงาน (KPI + ตาราง) */}
-        {summaryData.length > 0 && (
+        {/* [ใหม่] ข้อความกรณีไม่พบผลลัพธ์การค้นหา */}
+        {!isLoading &&
+          aggregatedData.length > 0 &&
+          summaryData.length === 0 && (
+            <div className="mb-8 bg-white p-6 rounded-lg shadow-sm text-center">
+              <h2 className="text-xl font-semibold text-gray-700">
+                ไม่พบผลลัพธ์การค้นหา
+              </h2>
+              <p className="text-gray-500">
+                ไม่พบรหัสไปรษณีย์หรือที่ทำการที่ตรงกับ "{searchTerm}"
+              </p>
+            </div>
+          )}
+
+        {/* กล่องรายงาน (เงื่อนไข: ต้องมีข้อมูลหลังจากการค้นหา) */}
+        {!isLoading && summaryData.length > 0 && (
           <div className="bg-white rounded-lg shadow-xl overflow-hidden mb-8">
             {/* --- 1. หัวข้อ --- */}
             <h2 className="text-3xl font-bold text-gray-800 mb-2 text-center pt-8 px-8">
               รายงานประสิทธิภาพการนำจ่าย EMS ในประเทศของที่ทำการในสังกัด{" "}
               {filterDisplayNames[selectedFilter]}
             </h2>
-            {/* [แสดงวันที่] */}
+
+            {/* [*** นี่คือส่วนที่ปรับปรุงการแสดงวันที่ ***] */}
             <p className="text-2xl text-gray-600 text-center mb-6">
-              ประจำวันที่ {selectedDay} {selectedMonthName} {selectedYear}
+              {/* ตรวจสอบว่าวันเริ่มต้นและสิ้นสุดเป็นวันเดียวกันหรือไม่ */}
+              {formatDateToISO(startDate) === formatDateToISO(endDate)
+                ? `ประจำวันที่ ${formatToFullThaiDate(startDate)}`
+                : `ประจำวันที่ ${formatToFullThaiDate(
+                    startDate
+                  )} ถึง ${formatToFullThaiDate(endDate)}`}
             </p>
+            {/* [*** จบส่วนที่ปรับปรุง ***] */}
 
             {/* --- 2. KPI Cards --- */}
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-5 px-8 pb-8">
@@ -991,12 +1260,6 @@ export default function Home() {
                       scope="col"
                       className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider"
                     >
-                      รหัส QMS
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider"
-                    >
                       ที่ทำการ
                     </th>
                     <th
@@ -1072,9 +1335,6 @@ export default function Home() {
                         <td className="px-6 py-4 whitespace-nowrap text-base font-semibold text-gray-900">
                           {keyE}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                          {qmsMap[keyE] || ""}
-                        </td>
                         <td
                           className={`px-6 py-4 whitespace-nowrap text-base ${officeTextClassName} ${officeBgClassName} font-semibold cursor-pointer hover:underline`}
                           onClick={() => handleShowDetails(compositeKey)}
@@ -1109,10 +1369,10 @@ export default function Home() {
                 <tfoot className="bg-gray-100 border-t-2 border-gray-300">
                   <tr className="font-bold">
                     <td
-                      colSpan="3"
+                      colSpan="2"
                       className="px-6 py-4 text-right text-base text-gray-800 uppercase"
                     >
-                      ยอดรวมทั้งหมด (Grand Total)
+                      ยอดรวม (ที่ค้นพบ)
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
                       {summaryKPIs.H.toLocaleString()}
@@ -1143,12 +1403,183 @@ export default function Home() {
         )}
       </div>
 
-      {/* 💡 [จุดที่ 10: อัปเดต] Modal (เพิ่มเงื่อนไข E(E)+R และ E(E)+B) */}
+      {/* --- Modal สำหรับอัปโหลดข้อมูล --- */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/75 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-xl font-semibold text-gray-800">
+                อัปโหลดข้อมูลใหม่
+              </h3>
+              <button
+                onClick={() => setIsUploadModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+                disabled={isUploading}
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  ></path>
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto">
+              {/* 1. เลือกวันที่สำหรับอัปโหลด (ยังเป็น Dropdown) */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-3">
+                  เลือกวันที่ (ของข้อมูลที่จะอัปโหลด)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label
+                      htmlFor="upload-day"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      วันที่
+                    </label>
+                    <select
+                      id="upload-day"
+                      value={uploadDay}
+                      onChange={(e) => setUploadDay(Number(e.target.value))}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5"
+                      disabled={isUploading}
+                    >
+                      {days.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="upload-month"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      เดือน
+                    </label>
+                    <select
+                      id="upload-month"
+                      value={uploadMonth}
+                      onChange={(e) => setUploadMonth(Number(e.target.value))}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5"
+                      disabled={isUploading}
+                    >
+                      {months.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="upload-year"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      ปี พ.ศ.
+                    </label>
+                    <select
+                      id="upload-year"
+                      value={uploadYear}
+                      onChange={(e) => setUploadYear(Number(e.target.value))}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base py-2.5"
+                      disabled={isUploading}
+                    >
+                      {years.map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. ช่องอัปโหลดไฟล์ */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-3">
+                  อัปโหลดไฟล์ (Excel)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {FILE_KEYS.map((key) => (
+                    <div key={key} className="bg-gray-50 p-4 rounded-lg border">
+                      <label
+                        htmlFor={`upload-file-${key}`}
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        ไฟล์: <strong>{key}</strong>
+                      </label>
+                      <input
+                        id={`upload-file-${key}`}
+                        type="file"
+                        accept=".xlsx, .xls"
+                        onChange={(e) => handleUploadFileChange(e, key)}
+                        className="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-red-50 file:text-red-700
+                                hover:file:bg-red-100
+                                cursor-pointer"
+                        disabled={isUploading}
+                      />
+                      {uploadFileNames[key] && (
+                        <p
+                          className="text-xs text-green-600 mt-2 truncate"
+                          title={uploadFileNames[key]}
+                        >
+                          {uploadFileNames[key]} (
+                          {uploadFilesData[key]?.length || 0} แถว)
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* [ปุ่มยืนยัน] */}
+            <div className="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
+              <button
+                onClick={() => setIsUploadModalOpen(false)}
+                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg mr-3"
+                disabled={isUploading}
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleSubmitUpload}
+                className={`font-bold py-2 px-4 rounded-lg ${
+                  isUploading
+                    ? "bg-gray-400 text-gray-600 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
+                disabled={
+                  isUploading || Object.keys(uploadFilesData).length === 0
+                }
+              >
+                {isUploading ? "กำลังอัปโหลด..." : "ยืนยันการอัปโหลด"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Modal รายละเอียด --- */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/75 backdrop-blur-sm">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[80vh] flex flex-col">
-            {" "}
-            {/* ขยายเป็น max-w-5xl */}
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="text-xl font-semibold text-gray-800">
                 {modalData.title}
@@ -1177,6 +1608,21 @@ export default function Home() {
               <h4 className="text-lg font-semibold text-gray-800 mb-3">
                 รายละเอียด (แยกตาม บริการ และ COD)
               </h4>
+              <p className="text-sm text-gray-500 mb-3 -mt-2">
+                *ยอดรวมนี้เป็นยอดสรุปของช่วงวันที่ที่เลือกทั้งหมด
+              </p>
+
+              {/* === [ใหม่] ปุ่มสำหรับเปิด Modal หมายเหตุ === */}
+              <div className="mb-4">
+                <button
+                  onClick={handleOpenReportModal}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors"
+                >
+                  รายงานหมายเหตุนำจ่าย
+                </button>
+              </div>
+              {/* === [จบส่วนปุ่มใหม่] === */}
+
               <table className="min-w-full divide-y divide-gray-200 border">
                 <thead className="bg-gray-50">
                   <tr>
@@ -1195,54 +1641,11 @@ export default function Home() {
                     <th className="px-4 py-2 text-left text-sm font-bold text-gray-700 uppercase">
                       ไม่สำเร็จ (O)
                     </th>
-                    <th className="px-4 py-2 text-left text-sm font-bold text-gray-700 uppercase">
-                      QMS Link
-                    </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-20S00">
                   {modalData.details.length > 0 ? (
                     modalData.details.map((detail, index) => {
-                      // --- [Logic ใหม่: สร้าง Link] ---
-                      let qmsLink = null;
-
-                      if (
-                        detail.service === "E(E)" &&
-                        detail.codRaw === "N" &&
-                        modalData.qmsCode
-                      ) {
-                        qmsLink = `https://qms.thailandpost.com/Web/Performance/QCDUnsuccessDeliveryReport.aspx?o=${modalData.qmsCode}&d=${selectedDay}&m=${selectedMonth}&y=${selectedYear}&t=1&u=0`;
-                      } else if (
-                        detail.service === "E(J)" &&
-                        detail.codRaw === "N" &&
-                        modalData.qmsCode
-                      ) {
-                        qmsLink = `https://qms.thailandpost.com/Web/Performance/QCDUnsuccessDeliveryReport.aspx?o=${modalData.qmsCode}&d=${selectedDay}&m=${selectedMonth}&y=${selectedYear}&t=115&u=0`;
-                      } else if (
-                        detail.service === "E(W)" &&
-                        detail.codRaw === "N" &&
-                        modalData.qmsCode
-                      ) {
-                        qmsLink = `https://qms.thailandpost.com/Web/Performance/QCDUnsuccessDeliveryReport.aspx?o=${modalData.qmsCode}&d=${selectedDay}&m=${selectedMonth}&y=${selectedYear}&t=120&u=0`;
-                      }
-                      // [ใหม่] E(E) + COD(น้ำเงิน)
-                      else if (
-                        detail.service === "E(E)" &&
-                        detail.codRaw === "B" &&
-                        modalData.qmsCode
-                      ) {
-                        qmsLink = `https://qms.thailandpost.com/Web/Performance/QCDUnsuccessDeliveryReport.aspx?o=${modalData.qmsCode}&d=${selectedDay}&m=${selectedMonth}&y=${selectedYear}&t=201&u=0`;
-                      }
-                      // [ใหม่] E(E) + COD(แดง)
-                      else if (
-                        detail.service === "E(E)" &&
-                        detail.codRaw === "R" &&
-                        modalData.qmsCode
-                      ) {
-                        qmsLink = `https://qms.thailandpost.com/Web/Performance/QCDUnsuccessDeliveryReport.aspx?o=${modalData.qmsCode}&d=${selectedDay}&m=${selectedMonth}&y=${selectedYear}&t=301&u=0`;
-                      }
-                      // --- [จบ Logic ใหม่] ---
-
                       return (
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-base text-gray-800 font-semibold">
@@ -1260,33 +1663,13 @@ export default function Home() {
                           <td className="px-4 py-3 text-base text-gray-800">
                             {detail.O.toLocaleString()}
                           </td>
-                          {/* [ใหม่] ปุ่ม QMS ในแถว */}
-                          <td className="px-4 py-3 text-base text-center">
-                            {qmsLink ? (
-                              <a
-                                href={qmsLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-lg text-sm transition-colors"
-                              >
-                                QMS
-                              </a>
-                            ) : (
-                              <button
-                                disabled
-                                className="bg-gray-300 text-gray-500 font-semibold py-1 px-3 rounded-lg text-sm cursor-not-allowed"
-                              >
-                                QMS
-                              </button>
-                            )}
-                          </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
                       <td
-                        colSpan="6"
+                        colSpan="5"
                         className="px-4 py-3 text-center text-gray-500"
                       >
                         ไม่พบข้อมูลรายละเอียด
@@ -1311,12 +1694,10 @@ export default function Home() {
                     <td className="px-4 py-3 text-base text-gray-900">
                       {modalData.summary.O.toLocaleString()}
                     </td>
-                    <td></td> {/* <-- ช่องว่างสำหรับคอลัมน์ QMS */}
                   </tr>
                 </tfoot>
               </table>
             </div>
-            {/* [ปุ่มปิด] */}
             <div className="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -1328,6 +1709,139 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* === [*** ใหม่: Modal รายงานหมายเหตุ (Modal ตัวที่ 2) ***] === */}
+      {isReportModalOpen && (
+        // z-[60] ต้องสูงกว่า z-50 ของ Modal ตัวแรก
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-xl font-semibold text-gray-800">
+                บันทึกรายงานหมายเหตุนำจ่าย
+              </h3>
+              {/* [แก้ไข] ใช้ handleCloseReportModal */}
+              <button
+                onClick={handleCloseReportModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  ></path>
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto">
+              {/* แถวที่ 1: ชื่อที่ทำการ และ วันที่ */}
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6">
+                <div className="mb-4 md:mb-0">
+                  <span className="text-sm font-medium text-gray-500">
+                    ที่ทำการ
+                  </span>
+                  <h4 className="text-lg font-semibold text-gray-800">
+                    {modalData.title}
+                  </h4>
+                </div>
+                <div>
+                  <label
+                    htmlFor="report-date"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    เลือกวันที่
+                  </label>
+                  <DatePicker
+                    id="report-date"
+                    selected={reportDate}
+                    onChange={(date) => setReportDate(date)}
+                    dateFormat="dd/MM/yyyy"
+                    className="mt-1" // ใช้ CSS จาก datepicker.css
+                  />
+                </div>
+              </div>
+
+              {/* แถวที่ 2: ฟอร์มกรอกข้อมูล */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+                {REPORT_REASONS.map((reason) => (
+                  <div key={reason.key}>
+                    <label
+                      htmlFor={`reason-${reason.key}`}
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      {reason.key} - {reason.label}
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric" // เพิ่ม inputMode
+                      pattern="[0-9]*" // เพิ่ม pattern
+                      id={`reason-${reason.key}`}
+                      value={reportFormData[reason.key]}
+                      onChange={(e) => handleReportFormChange(e, reason.key)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base py-2.5"
+                      autoComplete="off"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* [*** นี่คือส่วนที่ปรับปรุง ***] */}
+            {/* ปุ่มยืนยัน/ปิด และ ผลรวม */}
+            <div className="flex justify-between items-center p-4 border-t bg-gray-50 rounded-b-lg">
+              {/* ส่วนสรุปผลรวม */}
+              <div>
+                <span className="text-sm font-medium text-gray-700">
+                  ยอดรวมที่กรอก:{" "}
+                  <strong
+                    className={
+                      // Logic การเปรียบเทียบ
+                      reportTotalSum === modalData.summary.O &&
+                      reportTotalSum > 0
+                        ? "text-green-600" // ตรง และ ไม่ใช่ 0
+                        : "text-red-600" // ไม่ตรง
+                    }
+                  >
+                    {reportTotalSum.toLocaleString()}
+                  </strong>
+                </span>
+                <span className="text-sm text-gray-500 mx-2">/</span>
+                <span className="text-sm font-medium text-gray-700">
+                  ยอดไม่สำเร็จ (O):{" "}
+                  <strong>{modalData.summary.O.toLocaleString()}</strong>
+                </span>
+              </div>
+
+              {/* ส่วนปุ่ม */}
+              <div>
+                {/* [แก้ไข] ใช้ handleCloseReportModal */}
+                <button
+                  onClick={handleCloseReportModal}
+                  className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg mr-3"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={handleSubmitReport}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg"
+                >
+                  บันทึกข้อมูล
+                </button>
+              </div>
+            </div>
+            {/* [*** จบส่วนที่ปรับปรุง ***] */}
+          </div>
+        </div>
+      )}
+      {/* === [*** จบ Modal ตัวที่ 2 ***] === */}
     </div>
   );
 }
