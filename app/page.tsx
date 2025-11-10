@@ -201,8 +201,27 @@ const spNakhonSawanSet = new Set(spNakhonSawanCodes);
 const spPhitsanulokCodes = ["65010"];
 const spPhitsanulokSet = new Set(spPhitsanulokCodes);
 
+// ########## [*** เพิ่มใหม่: สร้าง Map สำหรับค้นหาสังกัดจากรหัสไปรษณีย์ ***] ##########
+const postalCodeToProvinceMap = new Map<string, string>();
+const addAllToMap = (codes: string[], key: string) => {
+  codes.forEach((code) => postalCodeToProvinceMap.set(code, key));
+};
+
+addAllToMap(nakhonSawanCodes, "nakhon-sawan");
+addAllToMap(uthaiThaniCodes, "uthai-thani");
+addAllToMap(kamphaengPhetCodes, "kamphaeng-phet");
+addAllToMap(takCodes, "tak");
+addAllToMap(sukhothaiCodes, "sukhothai");
+addAllToMap(phitsanulokCodes, "phitsanulok");
+addAllToMap(phichitCodes, "phichit");
+addAllToMap(phetchabunCodes, "phetchabun");
+addAllToMap(spNakhonSawanCodes, "sp-nakhon-sawan");
+addAllToMap(spPhitsanulokCodes, "sp-phitsanulok");
+// ########## [*** จบส่วนที่เพิ่ม ***] ##########
+
 const filterDisplayNames = {
   all: "ปข.6",
+  "aggregate-by-province": "สรุปราย ปจ./ศป.", // [*** เพิ่มใหม่ ***]
   "nakhon-sawan": "ปจ.นครสวรรค์",
   "uthai-thani": "ปจ.อุทัยธานี",
   "kamphaeng-phet": "ปจ.กำแพงเพชร",
@@ -547,6 +566,8 @@ const DashboardView = ({ active }: { active: boolean }) => {
 
   // Logic สรุปผล (ขั้นตอนที่ 1: รวมข้อมูลตามสังกัด)
   const aggregatedData = useMemo(() => {
+    // [*** เริ่มส่วนแก้ไข ***]
+    // Map สำหรับเก็บผลรวม
     const summary = new Map<
       string,
       {
@@ -558,56 +579,108 @@ const DashboardView = ({ active }: { active: boolean }) => {
       }
     >(); // ระบุ Type
 
-    let filterSet: Set<string> | null = null; // ระบุ Type
-    if (selectedFilter === "nakhon-sawan") {
-      filterSet = nakhonSawanSet;
-    } else if (selectedFilter === "uthai-thani") {
-      filterSet = uthaiThaniSet;
-    } else if (selectedFilter === "kamphaeng-phet") {
-      filterSet = kamphaengPhetSet;
-    } else if (selectedFilter === "tak") {
-      filterSet = takSet;
-    } else if (selectedFilter === "sukhothai") {
-      filterSet = sukhothaiSet;
-    } else if (selectedFilter === "phitsanulok") {
-      filterSet = phitsanulokSet;
-    } else if (selectedFilter === "phichit") {
-      filterSet = phichitSet;
-    } else if (selectedFilter === "phetchabun") {
-      filterSet = phetchabunSet;
-    } else if (selectedFilter === "sp-nakhon-sawan") {
-      filterSet = spNakhonSawanSet;
-    } else if (selectedFilter === "sp-phitsanulok") {
-      filterSet = spPhitsanulokSet;
-    }
+    // ########## โหมดใหม่: สรุปตาม ปจ./ศป. ##########
+    if (selectedFilter === "aggregate-by-province") {
+      supabaseData.forEach((item) => {
+        const pCode = String(item.cole);
+        const provinceKey = postalCodeToProvinceMap.get(pCode); // ใช้ Map ที่สร้างไว้
 
-    supabaseData.forEach((item) => {
-      if (filterSet && !filterSet.has(String(item.cole))) {
-        return;
-      }
-      const keyE = String(item.cole);
-      const keyF = String(item.colf);
-      const compositeKey = `${keyE}||${keyF}`;
-      const valueH = item.valueh || 0;
-      const valueI = item.valuei || 0;
-      const valueK = item.valuek || 0;
-      const valueM = item.valuem || 0;
-      const valueO = item.valueo || 0;
-      const currentSums = summary.get(compositeKey) || {
-        sumH: 0,
-        sumI: 0,
-        sumK: 0,
-        sumM: 0,
-        sumO: 0,
-      };
-      summary.set(compositeKey, {
-        sumH: currentSums.sumH + valueH,
-        sumI: currentSums.sumI + valueI,
-        sumK: currentSums.sumK + valueK,
-        sumM: currentSums.sumM + valueM,
-        sumO: currentSums.sumO + valueO,
+        // ถ้าไม่พบบ้าน (เช่น รหัสไปรษณีย์ที่ไม่ได้อยู่ในกลุ่ม) ให้ข้ามไป
+        if (!provinceKey) {
+          return;
+        }
+
+        // ใช้ provinceKey เป็น Key ในการรวม
+        // และดึงชื่อที่ถูกต้องจาก filterDisplayNames
+        const provinceName =
+          filterDisplayNames[provinceKey as keyof typeof filterDisplayNames] ||
+          provinceKey;
+        const compositeKey = `${provinceKey}||${provinceName}`;
+
+        const valueH = item.valueh || 0;
+        const valueI = item.valuei || 0;
+        const valueK = item.valuek || 0;
+        const valueM = item.valuem || 0;
+        const valueO = item.valueo || 0;
+
+        const currentSums = summary.get(compositeKey) || {
+          sumH: 0,
+          sumI: 0,
+          sumK: 0,
+          sumM: 0,
+          sumO: 0,
+        };
+
+        summary.set(compositeKey, {
+          sumH: currentSums.sumH + valueH,
+          sumI: currentSums.sumI + valueI,
+          sumK: currentSums.sumK + valueK,
+          sumM: currentSums.sumM + valueM,
+          sumO: currentSums.sumO + valueO,
+        });
       });
-    });
+    }
+    // ########## โหมดเดิม: กรองตามสังกัด (แสดงราย ปณ.) ##########
+    else {
+      let filterSet: Set<string> | null = null; // ระบุ Type
+      if (selectedFilter === "nakhon-sawan") {
+        filterSet = nakhonSawanSet;
+      } else if (selectedFilter === "uthai-thani") {
+        filterSet = uthaiThaniSet;
+      } else if (selectedFilter === "kamphaeng-phet") {
+        filterSet = kamphaengPhetSet;
+      } else if (selectedFilter === "tak") {
+        filterSet = takSet;
+      } else if (selectedFilter === "sukhothai") {
+        filterSet = sukhothaiSet;
+      } else if (selectedFilter === "phitsanulok") {
+        filterSet = phitsanulokSet;
+      } else if (selectedFilter === "phichit") {
+        filterSet = phichitSet;
+      } else if (selectedFilter === "phetchabun") {
+        filterSet = phetchabunSet;
+      } else if (selectedFilter === "sp-nakhon-sawan") {
+        filterSet = spNakhonSawanSet;
+      } else if (selectedFilter === "sp-phitsanulok") {
+        filterSet = spPhitsanulokSet;
+      }
+
+      supabaseData.forEach((item) => {
+        // กรองออกถ้าเลือกสังกัดไว้
+        if (filterSet && !filterSet.has(String(item.cole))) {
+          return;
+        }
+
+        // Logic เดิม: ใช้ รหัส ปณ. + ชื่อ ปณ. เป็น Key
+        const keyE = String(item.cole);
+        const keyF = String(item.colf);
+        const compositeKey = `${keyE}||${keyF}`;
+
+        const valueH = item.valueh || 0;
+        const valueI = item.valuei || 0;
+        const valueK = item.valuek || 0;
+        const valueM = item.valuem || 0;
+        const valueO = item.valueo || 0;
+
+        const currentSums = summary.get(compositeKey) || {
+          sumH: 0,
+          sumI: 0,
+          sumK: 0,
+          sumM: 0,
+          sumO: 0,
+        };
+
+        summary.set(compositeKey, {
+          sumH: currentSums.sumH + valueH,
+          sumI: currentSums.sumI + valueI,
+          sumK: currentSums.sumK + valueK,
+          sumM: currentSums.sumM + valueM,
+          sumO: currentSums.sumO + valueO,
+        });
+      });
+    }
+    // [*** จบส่วนแก้ไข ***]
+
     return Array.from(summary.entries());
   }, [supabaseData, selectedFilter]);
 
@@ -1048,7 +1121,24 @@ const DashboardView = ({ active }: { active: boolean }) => {
                       >
                         แสดงทั้งหมด
                       </button>
-                      {/* ... (ปุ่ม Filter อื่นๆ) ... */}
+
+                      {/* === [*** ปุ่มที่เพิ่มใหม่ ***] === */}
+                      <button
+                        onClick={() =>
+                          setSelectedFilter("aggregate-by-province")
+                        }
+                        className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                            ${
+                              selectedFilter === "aggregate-by-province"
+                                ? "bg-red-600 text-white"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }
+                          `}
+                      >
+                        สรุปราย ปจ./ศป.
+                      </button>
+                      {/* === [*** จบส่วนที่เพิ่ม ***] === */}
+
                       <button
                         onClick={() => setSelectedFilter("nakhon-sawan")}
                         className={`py-2 px-5 rounded-lg font-semibold transition-colors
@@ -1339,17 +1429,23 @@ const DashboardView = ({ active }: { active: boolean }) => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-100">
                       <tr>
+                        {/* [*** แก้ไข: ซ่อนคอลัมน์ Key เมื่อสรุป ***] */}
+                        {selectedFilter !== "aggregate-by-province" && (
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider"
+                          >
+                            รหัสไปรษณีย์
+                          </th>
+                        )}
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider"
                         >
-                          รหัสไปรษณีย์
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider"
-                        >
-                          ที่ทำการ
+                          {/* [*** แก้ไข: เปลี่ยนหัวตาราง ***] */}
+                          {selectedFilter === "aggregate-by-province"
+                            ? "สังกัด (ปจ./ศป.)"
+                            : "ที่ทำการ"}
                         </th>
                         <th
                           scope="col"
@@ -1421,12 +1517,28 @@ const DashboardView = ({ active }: { active: boolean }) => {
                             key={compositeKey}
                             className="hover:bg-gray-50 transition-colors"
                           >
-                            <td className="px-6 py-4 whitespace-nowrap text-base font-semibold text-gray-900">
-                              {keyE}
-                            </td>
+                            {/* [*** แก้ไข: ซ่อนคอลัมน์ Key เมื่อสรุป ***] */}
+                            {selectedFilter !== "aggregate-by-province" && (
+                              <td className="px-6 py-4 whitespace-nowrap text-base font-semibold text-gray-900">
+                                {keyE}
+                              </td>
+                            )}
                             <td
-                              className={`px-6 py-4 whitespace-nowrap text-base ${officeTextClassName} ${officeBgClassName} font-semibold cursor-pointer hover:underline`}
-                              onClick={() => handleShowDetails(compositeKey)}
+                              className={`px-6 py-4 whitespace-nowrap text-base ${officeTextClassName} ${officeBgClassName} font-semibold 
+                                ${
+                                  selectedFilter !== "aggregate-by-province"
+                                    ? "cursor-pointer hover:underline"
+                                    : ""
+                                }
+                              `}
+                              onClick={() => {
+                                // [*** แก้ไข: เพิ่มเงื่อนไขการ Click ***]
+                                if (
+                                  selectedFilter !== "aggregate-by-province"
+                                ) {
+                                  handleShowDetails(compositeKey);
+                                }
+                              }}
                             >
                               {keyF}
                             </td>
@@ -1457,8 +1569,11 @@ const DashboardView = ({ active }: { active: boolean }) => {
                     </tbody>
                     <tfoot className="bg-gray-100 border-t-2 border-gray-300">
                       <tr className="font-bold">
+                        {/* [*** แก้ไข: ปรับ colSpan ***] */}
                         <td
-                          colSpan={2}
+                          colSpan={
+                            selectedFilter === "aggregate-by-province" ? 1 : 2
+                          }
                           className="px-6 py-4 text-right text-base text-gray-800 uppercase"
                         >
                           ยอดรวม (ที่ค้นพบ)
