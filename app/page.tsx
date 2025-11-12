@@ -11,6 +11,90 @@ import "react-datepicker/dist/react-datepicker.css";
 // --- Import CSS ที่เราเพิ่งสร้าง ---
 import "./datepicker.css"; // (ถ้าคุณเก็บไว้ที่อื่น ให้แก้ Path ตรงนี้)
 
+// [*** ใหม่: Import Chart.js ***]
+import { Pie } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import ChartDataLabels from "chartjs-plugin-datalabels"; // [*** เพิ่ม 1/3 ***]
+
+// ลงทะเบียน components ที่จำเป็นสำหรับ Pie Chart
+ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels); // [*** เพิ่ม 2/3 ***]
+
+// ######################################################################
+//   [*** ใหม่: เพิ่ม Types และ Interfaces ***]
+// ######################################################################
+
+// ข้อมูลดิบจากตาราง delivery_data
+interface DeliveryDataRow {
+  id?: number;
+  report_date: string;
+  file_key: string;
+  cole: string; // Postal code
+  colf: string; // Office name
+  cold: string; // Service type
+  colg: string; // COD status
+  valueh: number;
+  valuei: number;
+  valuek: number;
+  valuem: number;
+  valueo: number;
+}
+
+// ข้อมูลดิบจากตาราง delivery_notes
+interface DeliveryNoteRow {
+  id?: number;
+  report_date: string;
+  postal_code: string;
+  office_name: string;
+  total_notes: number;
+  notes_data: { [key: string]: string }; // {"0": "10", "1": "5"}
+}
+
+// ผลรวมในตาราง Dashboard
+interface AggregatedSums {
+  sumH: number;
+  sumI: number;
+  sumK: number;
+  sumM: number;
+  sumO: number;
+}
+
+// [*** แก้ไข: เพิ่ม status ***]
+// ข้อมูลสำหรับตารางในหน้า "รายงานหมายเหตุ"
+interface ReportTableRow {
+  postal_code: string;
+  office_name: string;
+  is_reported: boolean;
+  status: "reported" | "not_reported" | "no_failure"; // [*** ใหม่ ***]
+  report_date: string | null;
+  total_notes: number;
+  notes_data_aggregated: { [key: string]: number }; // {"0": 10, "1": 5}
+}
+
+// ข้อมูลสำหรับ Modal "ดูรายละเอียด" ในหน้า "รายงานหมายเหตุ"
+interface ModalDetailData {
+  office_name: string;
+  total_notes: number;
+  notes_data: { [key: string]: number };
+}
+
+// Props สำหรับ Views
+interface ViewProps {
+  active: boolean;
+}
+
+// [*** ใหม่: Type สำหรับ Pie Chart ***]
+interface NotesSummary {
+  data: { [key: string]: number };
+  total: number;
+}
+
+interface PieChartProps {
+  notesSummary: NotesSummary;
+  reasonMap: Map<string, string>;
+}
+
+// ######################################################################
+
 // --- [ย้าย] รายการหมายเหตุมาไว้บนสุด ---
 const REPORT_REASONS = [
   { key: "0", label: "ออกใบแจ้ง" },
@@ -39,14 +123,10 @@ const REPORT_REASONS = [
 // [ใหม่] สร้าง Map เพื่อให้ค้นหา Label ได้เร็วขึ้น
 const reasonLabelMap = new Map(REPORT_REASONS.map((r) => [r.key, r.label]));
 
-// ########## [แก้ไข TypeScript Error 1] ##########
-const initialReportFormData = REPORT_REASONS.reduce(
-  (acc: { [key: string]: string }, reason) => {
-    acc[reason.key] = "";
-    return acc;
-  },
-  {}
-);
+const initialReportFormData = REPORT_REASONS.reduce((acc, reason) => {
+  acc[reason.key] = "";
+  return acc;
+}, {} as { [key: string]: string }); // [*** แก้ไข: เพิ่ม Type ***]
 // ------------------------------------------
 
 // กำหนด Key ของไฟล์ทั้ง 5
@@ -201,27 +281,10 @@ const spNakhonSawanSet = new Set(spNakhonSawanCodes);
 const spPhitsanulokCodes = ["65010"];
 const spPhitsanulokSet = new Set(spPhitsanulokCodes);
 
-// ########## [*** เพิ่มใหม่: สร้าง Map สำหรับค้นหาสังกัดจากรหัสไปรษณีย์ ***] ##########
-const postalCodeToProvinceMap = new Map<string, string>();
-const addAllToMap = (codes: string[], key: string) => {
-  codes.forEach((code) => postalCodeToProvinceMap.set(code, key));
-};
-
-addAllToMap(nakhonSawanCodes, "nakhon-sawan");
-addAllToMap(uthaiThaniCodes, "uthai-thani");
-addAllToMap(kamphaengPhetCodes, "kamphaeng-phet");
-addAllToMap(takCodes, "tak");
-addAllToMap(sukhothaiCodes, "sukhothai");
-addAllToMap(phitsanulokCodes, "phitsanulok");
-addAllToMap(phichitCodes, "phichit");
-addAllToMap(phetchabunCodes, "phetchabun");
-addAllToMap(spNakhonSawanCodes, "sp-nakhon-sawan");
-addAllToMap(spPhitsanulokCodes, "sp-phitsanulok");
-// ########## [*** จบส่วนที่เพิ่ม ***] ##########
-
+// [*** แก้ไข: ย้าย filterDisplayNames มา Global ***]
 const filterDisplayNames = {
-  all: "ปข.6",
-  "aggregate-by-province": "สรุปราย ปจ./ศป.", // [*** เพิ่มใหม่ ***]
+  all: "ปข.6 (ทุกที่ทำการ)",
+  "province-summary": "ปข.6 (สรุปตาม ปจ.)", // [*** ใหม่ ***]
   "nakhon-sawan": "ปจ.นครสวรรค์",
   "uthai-thani": "ปจ.อุทัยธานี",
   "kamphaeng-phet": "ปจ.กำแพงเพชร",
@@ -237,9 +300,8 @@ const filterDisplayNames = {
 //   จบส่วน Global
 // ######################################################################
 
-// ########## [แก้ไข TypeScript Error 2] ##########
-// ฟังก์ชันสำหรับแปลงค่า Col G
-const getCodStatus = (code: any) => {
+// [*** แก้ไข: เพิ่ม Type ***]
+const getCodStatus = (code: string | number) => {
   const c = String(code).toUpperCase();
   if (c === "R") return "COD(แดง)";
   if (c === "B") return "COD(น้ำเงิน)";
@@ -247,19 +309,17 @@ const getCodStatus = (code: any) => {
   return "ไม่";
 };
 
-// ########## [แก้ไข TypeScript Error 3] ##########
-// [แก้ไข] ฟังก์ชันช่วยแปลงวันที่ (Date object) เป็น YYYY-MM-DD (AD)
+// [*** แก้ไข: เพิ่ม Type ***]
 const formatDateToISO = (date: Date | null) => {
   if (!date) return null;
   const yearAD = date.getFullYear();
   const month = date.getMonth() + 1; // getMonth() returns 0-11
   const day = date.getDate();
-  const pad = (num: number) => String(num).padStart(2, "0");
+  const pad = (num) => String(num).padStart(2, "0");
   return `${yearAD}-${pad(month)}-${pad(day)}`;
 };
 
-// ########## [แก้ไข TypeScript Error 4] ##########
-// [ใหม่] ฟังก์ชันแปลงวันที่เป็น พ.ศ. (สำหรับแสดงผล)
+// [*** แก้ไข: เพิ่ม Type ***]
 const formatToFullThaiDate = (date: Date | string | null) => {
   if (!date) return "";
 
@@ -294,16 +354,115 @@ const formatToFullThaiDate = (date: Date | string | null) => {
 };
 
 // ######################################################################
+//   [*** ใหม่: Component สำหรับ Pie Chart ***]
+// ######################################################################
+const CHART_COLORS = [
+  "#DC2626", // red-600
+  "#EA580C", // orange-600
+  "#F59E0B", // amber-500
+  "#16A34A", // green-600
+  "#2563EB", // blue-600
+  "#4F46E5", // indigo-600
+  "#7C3AED", // violet-600
+  "#DB2777", // pink-600
+  "#64748B", // slate-500
+  "#F97316", // orange-500
+  "#EAB308", // yellow-500
+  "#84CC16", // lime-500
+  "#10B981", // emerald-500
+  "#06B6D4", // cyan-500
+  "#6366F1", // indigo-500
+  "#A855F7", // purple-500
+  "#EC4899", // pink-500
+  "#78716C", // stone-500
+  "#EF4444", // red-500
+  "#3B82F6", // blue-500
+  "#8B5CF6", // violet-500
+];
+
+const NotesPieChart = ({ notesSummary, reasonMap }: PieChartProps) => {
+  // 1. กรองและจัดเรียงข้อมูล
+  const chartDataEntries = Object.entries(notesSummary.data)
+    .map(([key, value]) => ({
+      key,
+      value,
+      label: reasonMap.get(key) || "Unknown",
+    }))
+    .filter((item) => item.value > 0)
+    .sort((a, b) => b.value - a.value); // เรียงจากมากไปน้อย
+
+  // 2. เตรียมข้อมูลให้ Chart.js
+  const data = {
+    labels: chartDataEntries.map((item) => `${item.key} - ${item.label}`),
+    datasets: [
+      {
+        label: "จำนวน",
+        data: chartDataEntries.map((item) => item.value),
+        backgroundColor: CHART_COLORS.slice(0, chartDataEntries.length),
+        borderColor: "#ffffff",
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top" as const,
+      },
+      title: {
+        display: false,
+      },
+      // ตั้งค่า Tooltip (ตอนเอาเมาส์ชี้)
+      tooltip: {
+        callbacks: {
+          label: function (context: any) {
+            // ใช้ any ตรงนี้เพราะ type ของ Chart.js ซับซ้อน
+            const label = context.label || "";
+            const value = context.parsed || 0;
+            const percentage = (
+              (value / (notesSummary.total || 1)) *
+              100
+            ).toFixed(1);
+            return `${label}: ${value.toLocaleString()} (${percentage}%)`;
+          },
+        },
+      },
+      // [*** เพิ่ม 3/3: การตั้งค่า DataLabels ***]
+      datalabels: {
+        formatter: (value: number, context: any) => {
+          const percentage = (value / (notesSummary.total || 1)) * 100;
+
+          // ซ่อนเปอร์เซ็นต์ที่น้อยกว่า 5% เพื่อไม่ให้รก
+          if (percentage < 5) {
+            return null;
+          }
+
+          return percentage.toFixed(1) + "%";
+        },
+        color: "#ffffff", // สีตัวอักษร
+        font: {
+          weight: "bold" as const, // [*** แก้ไข: เพิ่ม as const ***]
+          size: 12,
+        },
+      },
+    },
+  };
+
+  return <Pie data={data} options={options} />;
+};
+
+// ######################################################################
 //   Component สำหรับหน้า Dashboard
 // ######################################################################
 
-// ########## [แก้ไข TypeScript Error 5] ##########
-const DashboardView = ({ active }: { active: boolean }) => {
-  // [*** แก้ไข: ลบ days, months ***]
+// [*** แก้ไข: เพิ่ม Type ***]
+const DashboardView = ({ active }: ViewProps) => {
   const years = [2568, 2569, 2570];
 
-  // State สำหรับเก็บข้อมูลที่ดึงจาก Supabase
-  const [supabaseData, setSupabaseData] = useState<any[]>([]); // ระบุ Type ให้ชัดเจนขึ้น
+  // [*** แก้ไข: เพิ่ม Type ***]
+  const [supabaseData, setSupabaseData] = useState<DeliveryDataRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // State สำหรับ Modal อัปโหลด
@@ -311,37 +470,33 @@ const DashboardView = ({ active }: { active: boolean }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadFilesData, setUploadFilesData] = useState<{
     [key: string]: any[];
-  }>({}); // ระบุ Type
+  }>({});
   const [uploadFileNames, setUploadFileNames] = useState<{
     [key: string]: string;
-  }>({}); // ระบุ Type
+  }>({});
 
   // [*** แก้ไข: เปลี่ยน State วันที่อัปโหลด ***]
   const [uploadDate, setUploadDate] = useState<Date | null>(null);
-  // [*** ลบ: uploadDay, uploadMonth, uploadYear ***]
 
   // State สำหรับ Modal รายละเอียด
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalData, setModalData] = useState<{
-    title: string;
-    details: any[];
-    summary: { H: number; M: number; O: number };
-  }>({
+  const [modalData, setModalData] = useState({
     title: "",
-    details: [],
+    details: [] as any[], // Type นี้ซับซ้อนและใช้แค่ที่นี่ ปล่อยเป็น any หรือสร้าง Type เฉพาะได้
     summary: { H: 0, M: 0, O: 0 },
-  }); // ระบุ Type
+  });
 
   // State สำหรับ Modal รายงานหมายเหตุ
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportDate, setReportDate] = useState<Date | null>(null);
-  const [reportFormData, setReportFormData] = useState<{
-    [key: string]: string;
-  }>(initialReportFormData); // ระบุ Type
+  const [reportFormData, setReportFormData] = useState(initialReportFormData);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   // State สำหรับ Filter ที่เลือก
   const [selectedFilter, setSelectedFilter] = useState("all");
+
+  // [*** ใหม่: State สำหรับ Service Filter ***]
+  const [selectedServiceFilter, setSelectedServiceFilter] = useState("all");
 
   // State สำหรับการค้นหา
   const [searchTerm, setSearchTerm] = useState("");
@@ -352,6 +507,22 @@ const DashboardView = ({ active }: { active: boolean }) => {
   // State วัน/เดือน/ปี (สำหรับ Fetch ข้อมูล)
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+
+  // [*** ใหม่: Helper function สำหรับจัดกลุ่ม ปจ. ***]
+  const getProvinceKey = (postalCode: string): string => {
+    const code = String(postalCode);
+    if (nakhonSawanSet.has(code)) return "nakhon-sawan";
+    if (uthaiThaniSet.has(code)) return "uthai-thani";
+    if (kamphaengPhetSet.has(code)) return "kamphaeng-phet";
+    if (takSet.has(code)) return "tak";
+    if (sukhothaiSet.has(code)) return "sukhothai";
+    if (phitsanulokSet.has(code)) return "phitsanulok";
+    if (phichitSet.has(code)) return "phichit";
+    if (phetchabunSet.has(code)) return "phetchabun";
+    if (spNakhonSawanSet.has(code)) return "sp-nakhon-sawan";
+    if (spPhitsanulokSet.has(code)) return "sp-phitsanulok";
+    return "other"; // หรือ null
+  };
 
   // useEffect เพื่อตั้งค่าเป็น "เมื่อวานนี้"
   useEffect(() => {
@@ -364,10 +535,9 @@ const DashboardView = ({ active }: { active: boolean }) => {
 
     // [*** แก้ไข: ตั้งค่า uploadDate ***]
     setUploadDate(new Date(yesterday));
-    // [*** ลบ: setUploadDay, setUploadMonth, setUploadYear ***]
   }, []);
 
-  // [แก้ไข] ฟังก์ชันสำหรับดึงข้อมูล (ดึงแค่ delivery_data)
+  // [*** แก้ไข: เพิ่ม Type ***]
   const fetchData = async (start: Date | null, end: Date | null) => {
     setIsLoading(true);
     setSupabaseData([]);
@@ -406,27 +576,24 @@ const DashboardView = ({ active }: { active: boolean }) => {
     }
   }, [startDate, endDate, active]); // เพิ่ม active เป็น dependency
 
-  // ########## [แก้ไข TypeScript Error 6] ##########
-  // ฟังก์ชันสำหรับจัดการการอัปโหลดไฟล์
+  // [*** แก้ไข: เพิ่ม Type ***]
   const handleUploadFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     fileKey: string
   ) => {
-    const file = e.target.files?.[0]; // ใช้ optional chaining
+    const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadFileNames((prev) => ({ ...prev, [fileKey]: file.name }));
     const reader = new FileReader();
     reader.onload = (event) => {
-      const buffer = event.target?.result; // ใช้ optional chaining
-      if (!buffer) return; // เพิ่มการตรวจสอบ
+      const buffer = event?.target?.result;
+      if (!buffer) return;
       const workbook = XLSX.read(buffer, { type: "array" });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData: any[][] = XLSX.utils.sheet_to_json(worksheet, {
-        header: 1,
-      }); // ระบุ Type
-      const slicedData = jsonData.slice(1, 1000);
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      const slicedData = jsonData.slice(1, 1000) as any[][]; // Cast to array of arrays
 
       const filteredData = slicedData
         .map((row) => {
@@ -500,8 +667,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
       if (countError) {
         throw new Error("ไม่สามารถตรวจสอบข้อมูลซ้ำได้: " + countError.message);
       }
-      if (count && count > 0) {
-        // เพิ่มการตรวจสอบ
+      if (count > 0) {
         alert(
           // [*** แก้ไข: Alert ***]
           `พบข้อมูลสำหรับวันที่ ${formatToFullThaiDate(
@@ -512,9 +678,9 @@ const DashboardView = ({ active }: { active: boolean }) => {
         return;
       }
 
-      const rowsToInsert: any[] = []; // ระบุ Type
+      const rowsToInsert: Omit<DeliveryDataRow, "id">[] = []; // [*** แก้ไข: เพิ่ม Type ***]
       Object.entries(uploadFilesData).forEach(([fileKey, fileData]) => {
-        fileData.forEach((item) => {
+        fileData.forEach((item: any) => {
           rowsToInsert.push({
             report_date: reportDate,
             file_key: fileKey,
@@ -555,46 +721,34 @@ const DashboardView = ({ active }: { active: boolean }) => {
       // [*** แก้ไข: ตั้งค่าวันที่หลัก ***]
       setStartDate(uploadDate);
       setEndDate(uploadDate);
-    } catch (error: any) {
-      // ระบุ Type
+    } catch (error) {
       console.error(error);
-      alert("เกิดข้อผิดพลาด: " + error.message);
+      alert("เกิดข้อผิดพลาด: " + (error as Error).message); // [*** แก้ไข: Type assertion ***]
     } finally {
       setIsUploading(false);
     }
   };
 
-  // Logic สรุปผล (ขั้นตอนที่ 1: รวมข้อมูลตามสังกัด)
-  const aggregatedData = useMemo(() => {
-    // [*** เริ่มส่วนแก้ไข ***]
-    // Map สำหรับเก็บผลรวม
-    const summary = new Map<
-      string,
-      {
-        sumH: number;
-        sumI: number;
-        sumK: number;
-        sumM: number;
-        sumO: number;
-      }
-    >(); // ระบุ Type
+  // [*** แก้ไข: เพิ่ม Logic สรุป ปจ. ***]
+  const aggregatedData = useMemo((): [string, AggregatedSums][] => {
+    const summary = new Map<string, AggregatedSums>();
 
-    // ########## โหมดใหม่: สรุปตาม ปจ./ศป. ##########
-    if (selectedFilter === "aggregate-by-province") {
-      supabaseData.forEach((item) => {
-        const pCode = String(item.cole);
-        const provinceKey = postalCodeToProvinceMap.get(pCode); // ใช้ Map ที่สร้างไว้
-
-        // ถ้าไม่พบบ้าน (เช่น รหัสไปรษณีย์ที่ไม่ได้อยู่ในกลุ่ม) ให้ข้ามไป
-        if (!provinceKey) {
-          return;
+    // [*** ใหม่: Logic สำหรับ 'province-summary' ***]
+    if (selectedFilter === "province-summary") {
+      supabaseData.forEach((item: DeliveryDataRow) => {
+        // [*** 1. (NEW) Service Filter ***]
+        if (
+          selectedServiceFilter !== "all" &&
+          item.file_key !== selectedServiceFilter
+        ) {
+          return; // Skip if service doesn't match
         }
 
-        // ใช้ provinceKey เป็น Key ในการรวม
-        // และดึงชื่อที่ถูกต้องจาก filterDisplayNames
-        const provinceName =
-          filterDisplayNames[provinceKey as keyof typeof filterDisplayNames] ||
-          provinceKey;
+        const provinceKey = getProvinceKey(item.cole);
+        if (provinceKey === "other") return; // ข้าม ปณ. ที่ไม่รู้จักสังกัด
+
+        // Key คือ 'nakhon-sawan||ปจ.นครสวรรค์'
+        const provinceName = filterDisplayNames[provinceKey] || "ไม่ระบุ";
         const compositeKey = `${provinceKey}||${provinceName}`;
 
         const valueH = item.valueh || 0;
@@ -602,7 +756,6 @@ const DashboardView = ({ active }: { active: boolean }) => {
         const valueK = item.valuek || 0;
         const valueM = item.valuem || 0;
         const valueO = item.valueo || 0;
-
         const currentSums = summary.get(compositeKey) || {
           sumH: 0,
           sumI: 0,
@@ -610,7 +763,6 @@ const DashboardView = ({ active }: { active: boolean }) => {
           sumM: 0,
           sumO: 0,
         };
-
         summary.set(compositeKey, {
           sumH: currentSums.sumH + valueH,
           sumI: currentSums.sumI + valueI,
@@ -619,49 +771,53 @@ const DashboardView = ({ active }: { active: boolean }) => {
           sumO: currentSums.sumO + valueO,
         });
       });
+      return Array.from(summary.entries());
     }
-    // ########## โหมดเดิม: กรองตามสังกัด (แสดงราย ปณ.) ##########
-    else {
-      let filterSet: Set<string> | null = null; // ระบุ Type
-      if (selectedFilter === "nakhon-sawan") {
-        filterSet = nakhonSawanSet;
-      } else if (selectedFilter === "uthai-thani") {
-        filterSet = uthaiThaniSet;
-      } else if (selectedFilter === "kamphaeng-phet") {
-        filterSet = kamphaengPhetSet;
-      } else if (selectedFilter === "tak") {
-        filterSet = takSet;
-      } else if (selectedFilter === "sukhothai") {
-        filterSet = sukhothaiSet;
-      } else if (selectedFilter === "phitsanulok") {
-        filterSet = phitsanulokSet;
-      } else if (selectedFilter === "phichit") {
-        filterSet = phichitSet;
-      } else if (selectedFilter === "phetchabun") {
-        filterSet = phetchabunSet;
-      } else if (selectedFilter === "sp-nakhon-sawan") {
-        filterSet = spNakhonSawanSet;
-      } else if (selectedFilter === "sp-phitsanulok") {
-        filterSet = spPhitsanulokSet;
+
+    // [*** Logic เดิมสำหรับฟิลเตอร์อื่นๆ ***]
+    let filterSet: Set<string> | null = null;
+    if (selectedFilter === "nakhon-sawan") {
+      filterSet = nakhonSawanSet;
+    } else if (selectedFilter === "uthai-thani") {
+      filterSet = uthaiThaniSet;
+    } else if (selectedFilter === "kamphaeng-phet") {
+      filterSet = kamphaengPhetSet;
+    } else if (selectedFilter === "tak") {
+      filterSet = takSet;
+    } else if (selectedFilter === "sukhothai") {
+      filterSet = sukhothaiSet;
+    } else if (selectedFilter === "phitsanulok") {
+      filterSet = phitsanulokSet;
+    } else if (selectedFilter === "phichit") {
+      filterSet = phichitSet;
+    } else if (selectedFilter === "phetchabun") {
+      filterSet = phetchabunSet;
+    } else if (selectedFilter === "sp-nakhon-sawan") {
+      filterSet = spNakhonSawanSet;
+    } else if (selectedFilter === "sp-phitsanulok") {
+      filterSet = spPhitsanulokSet;
+    }
+
+    supabaseData.forEach((item: DeliveryDataRow) => {
+      // [*** 1. (NEW) Service Filter ***]
+      if (
+        selectedServiceFilter !== "all" &&
+        item.file_key !== selectedServiceFilter
+      ) {
+        return; // Skip if service doesn't match
       }
 
-      supabaseData.forEach((item) => {
-        // กรองออกถ้าเลือกสังกัดไว้
-        if (filterSet && !filterSet.has(String(item.cole))) {
-          return;
-        }
-
-        // Logic เดิม: ใช้ รหัส ปณ. + ชื่อ ปณ. เป็น Key
+      // [*** 2. (Existing) Agency Filter ***]
+      // ถ้าเลือก 'all' (filterSet=null) หรือ cole อยู่ใน Set
+      if (!filterSet || filterSet.has(String(item.cole))) {
         const keyE = String(item.cole);
         const keyF = String(item.colf);
         const compositeKey = `${keyE}||${keyF}`;
-
         const valueH = item.valueh || 0;
         const valueI = item.valuei || 0;
         const valueK = item.valuek || 0;
         const valueM = item.valuem || 0;
         const valueO = item.valueo || 0;
-
         const currentSums = summary.get(compositeKey) || {
           sumH: 0,
           sumI: 0,
@@ -669,7 +825,6 @@ const DashboardView = ({ active }: { active: boolean }) => {
           sumM: 0,
           sumO: 0,
         };
-
         summary.set(compositeKey, {
           sumH: currentSums.sumH + valueH,
           sumI: currentSums.sumI + valueI,
@@ -677,33 +832,37 @@ const DashboardView = ({ active }: { active: boolean }) => {
           sumM: currentSums.sumM + valueM,
           sumO: currentSums.sumO + valueO,
         });
-      });
-    }
-    // [*** จบส่วนแก้ไข ***]
-
+      }
+    });
     return Array.from(summary.entries());
-  }, [supabaseData, selectedFilter]);
+  }, [supabaseData, selectedFilter, selectedServiceFilter]); // [*** แก้ไข: เพิ่ม Dependency ***]
 
   // Logic สรุปผล (ขั้นตอนที่ 2: ค้นหาและเรียงลำดับ)
   const summaryData = useMemo(() => {
-    const filteredArray = aggregatedData.filter(([compositeKey, sums]) => {
-      if (searchTerm.trim() === "") {
-        return true;
+    // [*** แก้ไข: เพิ่ม Type ***]
+    const filteredArray = aggregatedData.filter(
+      ([compositeKey, sums]: [string, AggregatedSums]) => {
+        if (searchTerm.trim() === "") {
+          return true;
+        }
+        const [keyE, keyF] = compositeKey.split("||");
+        const lowerSearchTerm = searchTerm.toLowerCase().trim();
+        return (
+          keyE.includes(lowerSearchTerm) ||
+          keyF.toLowerCase().includes(lowerSearchTerm)
+        );
       }
-      const [keyE, keyF] = compositeKey.split("||");
-      const lowerSearchTerm = searchTerm.toLowerCase().trim();
-      return (
-        keyE.includes(lowerSearchTerm) ||
-        keyF.toLowerCase().includes(lowerSearchTerm)
-      );
-    });
-    filteredArray.sort((a, b) => {
-      const sumsA = a[1];
-      const sumsB = b[1];
-      const rateA = sumsA.sumH > 0 ? sumsA.sumM / sumsA.sumH : 0;
-      const rateB = sumsB.sumH > 0 ? sumsB.sumM / sumsB.sumH : 0;
-      return rateA - rateB;
-    });
+    );
+    // [*** แก้ไข: เพิ่ม Type ***]
+    filteredArray.sort(
+      (a: [string, AggregatedSums], b: [string, AggregatedSums]) => {
+        const sumsA = a[1];
+        const sumsB = b[1];
+        const rateA = sumsA.sumH > 0 ? sumsA.sumM / sumsA.sumH : 0;
+        const rateB = sumsB.sumH > 0 ? sumsB.sumM / sumsB.sumH : 0;
+        return rateA - rateB;
+      }
+    );
     return filteredArray;
   }, [aggregatedData, searchTerm]);
 
@@ -713,7 +872,8 @@ const DashboardView = ({ active }: { active: boolean }) => {
     if (!summaryData || summaryData.length === 0) {
       return { ...totals, successRate: 0, failureRate: 0 };
     }
-    summaryData.forEach(([, sums]) => {
+    // [*** แก้ไข: เพิ่ม Type ***]
+    summaryData.forEach(([, sums]: [string, AggregatedSums]) => {
       totals.H += sums.sumH;
       totals.I += sums.sumI;
       totals.K += sums.sumK;
@@ -741,20 +901,20 @@ const DashboardView = ({ active }: { active: boolean }) => {
     return false; // ผ่านหมด
   }, [isSubmittingReport, reportTotalSum, modalData.summary.O]);
 
-  // ########## [แก้ไข TypeScript Error 7] ##########
-  // ฟังก์ชันสำหรับเปิด Modal
+  // [*** แก้ไข: เอา Service Filter ออกจาก Logic นี้ ***]
   const handleShowDetails = (compositeKey: string) => {
     const [keyE, keyF] = compositeKey.split("||");
     const title = `รายละเอียด: ${keyE} - ${keyF}`;
 
-    const subSummaryMap = new Map<
-      string,
-      { H: number; M: number; O: number }
-    >(); // ระบุ Type
+    const subSummaryMap = new Map();
     const totalSummary = { H: 0, M: 0, O: 0 };
 
     supabaseData.forEach((item) => {
+      // Logic นี้จะวน loop `supabaseData` ทั้งหมด
+      // ซึ่งเป็นข้อมูลดิบที่ยังไม่ได้กรอง service
       if (String(item.cole) === keyE && String(item.colf) === keyF) {
+        // [*** (REMOVED) ลบการเช็ค selectedServiceFilter ออกจากตรงนี้ ***]
+
         const service = item.cold;
         const codRaw = item.colg;
         const codDisplay = getCodStatus(codRaw);
@@ -794,7 +954,9 @@ const DashboardView = ({ active }: { active: boolean }) => {
   };
 
   // --- ฟังก์ชันสำหรับ Modal หมายเหตุ ---
+  // [*** แก้ไข: ตั้งค่า reportDate = endDate ***]
   const handleOpenReportModal = () => {
+    setReportDate(endDate); // [*** แก้ไข ***]
     setIsReportModalOpen(true);
   };
 
@@ -803,7 +965,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
     setReportFormData(initialReportFormData);
   };
 
-  // ########## [แก้ไข TypeScript Error 8] ##########
+  // [*** แก้ไข: เพิ่ม Type ***]
   const handleReportFormChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     key: string
@@ -889,14 +1051,17 @@ const DashboardView = ({ active }: { active: boolean }) => {
         )} สำเร็จ!`
       );
       handleCloseReportModal();
-    } catch (error: any) {
-      // ระบุ Type
+    } catch (error) {
       console.error("Error submitting report:", error);
-      alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
+      alert("เกิดข้อผิดพลาดในการบันทึก: " + (error as Error).message); // [*** แก้ไข: Type assertion ***]
     } finally {
       setIsSubmittingReport(false);
     }
   };
+
+  // [*** ใหม่: ตัวแปรเช็คสถานะสรุป ปจ. ***]
+  const isProvinceSummary = selectedFilter === "province-summary";
+
   // ----------------------------------------
 
   return (
@@ -1001,7 +1166,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                           <DatePicker
                             id="start-date"
                             selected={startDate}
-                            onChange={(date: Date | null) => setStartDate(date)}
+                            onChange={(date: Date | null) => setStartDate(date)} // [*** แก้ไข: เพิ่ม Type ***]
                             selectsStart
                             startDate={startDate}
                             endDate={endDate}
@@ -1021,11 +1186,11 @@ const DashboardView = ({ active }: { active: boolean }) => {
                           <DatePicker
                             id="end-date"
                             selected={endDate}
-                            onChange={(date: Date | null) => setEndDate(date)}
+                            onChange={(date: Date | null) => setEndDate(date)} // [*** แก้ไข: เพิ่ม Type ***]
                             selectsEnd
                             startDate={startDate}
                             endDate={endDate}
-                            minDate={startDate || undefined} // ป้องกันการเลือกวันที่สิ้นสุดก่อนวันเริ่ม
+                            minDate={startDate} // ป้องกันการเลือกวันที่สิ้นสุดก่อนวันเริ่ม
                             dateFormat="dd/MM/yyyy"
                             className="mt-1"
                           />
@@ -1103,8 +1268,9 @@ const DashboardView = ({ active }: { active: boolean }) => {
                     </div>
                   </div>
 
-                  {/* Card 3: ตัวกรองสังกัด (เต็มความกว้าง) */}
+                  {/* [*** แก้ไข: รวม Card 3 และ 4 ***] */}
                   <div className="bg-white p-6 rounded-lg shadow-sm">
+                    {/* Card 3: ตัวกรองสังกัด (เต็มความกว้าง) */}
                     <h3 className="text-lg font-semibold text-gray-700 mb-4">
                       🏢 กรองตามสังกัด
                     </h3>
@@ -1119,26 +1285,24 @@ const DashboardView = ({ active }: { active: boolean }) => {
                             }
                           `}
                       >
-                        แสดงทั้งหมด
+                        {filterDisplayNames["all"]}
                       </button>
 
-                      {/* === [*** ปุ่มที่เพิ่มใหม่ ***] === */}
+                      {/* [*** ใหม่: ปุ่มสรุป ปจ. ***] */}
                       <button
-                        onClick={() =>
-                          setSelectedFilter("aggregate-by-province")
-                        }
+                        onClick={() => setSelectedFilter("province-summary")}
                         className={`py-2 px-5 rounded-lg font-semibold transition-colors
                             ${
-                              selectedFilter === "aggregate-by-province"
+                              selectedFilter === "province-summary"
                                 ? "bg-red-600 text-white"
                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }
                           `}
                       >
-                        สรุปราย ปจ./ศป.
+                        {filterDisplayNames["province-summary"]}
                       </button>
-                      {/* === [*** จบส่วนที่เพิ่ม ***] === */}
 
+                      {/* ... (ปุ่ม Filter อื่นๆ) ... */}
                       <button
                         onClick={() => setSelectedFilter("nakhon-sawan")}
                         className={`py-2 px-5 rounded-lg font-semibold transition-colors
@@ -1260,6 +1424,39 @@ const DashboardView = ({ active }: { active: boolean }) => {
                         ศป.พิษณุโลก
                       </button>
                     </div>
+
+                    {/* [*** ใหม่: ย้าย Card 4 มาไว้ที่นี่ ***] */}
+                    <hr className="my-6 border-gray-200" />
+
+                    <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                      ⚙️ กรองตามประเภทบริการ
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setSelectedServiceFilter("all")}
+                        className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
+                          selectedServiceFilter === "all"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        ทุกบริการ
+                      </button>
+                      {FILE_KEYS.map((serviceKey) => (
+                        <button
+                          key={serviceKey}
+                          onClick={() => setSelectedServiceFilter(serviceKey)}
+                          className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
+                            selectedServiceFilter === serviceKey
+                              ? "bg-red-600 text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {serviceKey}
+                        </button>
+                      ))}
+                    </div>
+                    {/* [*** จบส่วนที่ย้ายมา ***] */}
                   </div>
                 </div>
                 {/* === [*** จบส่วน UI ใหม่ ***] === */}
@@ -1320,7 +1517,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                     ไม่พบผลลัพธ์การค้นหา
                   </h2>
                   <p className="text-gray-500">
-                    ไม่พบรหัสไปรษณีย์หรือที่ทำการที่ตรงกับ "{searchTerm}"
+                    ไม่พบที่ทำการ/สังกัดที่ตรงกับ "{searchTerm}"
                   </p>
                 </div>
               )}
@@ -1331,11 +1528,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                 {/* --- 1. หัวข้อ --- */}
                 <h2 className="text-3xl font-bold text-gray-800 mb-2 text-center pt-8 px-8">
                   รายงานประสิทธิภาพการนำจ่าย EMS ในประเทศของที่ทำการในสังกัด{" "}
-                  {
-                    filterDisplayNames[
-                      selectedFilter as keyof typeof filterDisplayNames
-                    ]
-                  }
+                  {filterDisplayNames[selectedFilter]}
                 </h2>
 
                 {/* [*** นี่คือส่วนที่ปรับปรุงการแสดงวันที่ ***] */}
@@ -1429,23 +1622,19 @@ const DashboardView = ({ active }: { active: boolean }) => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-100">
                       <tr>
-                        {/* [*** แก้ไข: ซ่อนคอลัมน์ Key เมื่อสรุป ***] */}
-                        {selectedFilter !== "aggregate-by-province" && (
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider"
-                          >
-                            รหัสไปรษณีย์
-                          </th>
-                        )}
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider"
                         >
                           {/* [*** แก้ไข: เปลี่ยนหัวตาราง ***] */}
-                          {selectedFilter === "aggregate-by-province"
-                            ? "สังกัด (ปจ./ศป.)"
-                            : "ที่ทำการ"}
+                          {isProvinceSummary ? "สังกัด" : "รหัสไปรษณีย์"}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider"
+                        >
+                          {/* [*** แก้ไข: เปลี่ยนหัวตาราง ***] */}
+                          {isProvinceSummary ? "ชื่อสังกัด" : "ที่ทำการ"}
                         </th>
                         <th
                           scope="col"
@@ -1517,28 +1706,20 @@ const DashboardView = ({ active }: { active: boolean }) => {
                             key={compositeKey}
                             className="hover:bg-gray-50 transition-colors"
                           >
-                            {/* [*** แก้ไข: ซ่อนคอลัมน์ Key เมื่อสรุป ***] */}
-                            {selectedFilter !== "aggregate-by-province" && (
-                              <td className="px-6 py-4 whitespace-nowrap text-base font-semibold text-gray-900">
-                                {keyE}
-                              </td>
-                            )}
+                            <td className="px-6 py-4 whitespace-nowrap text-base font-semibold text-gray-900">
+                              {keyE}
+                            </td>
+                            {/* [*** แก้ไข: ปิด Click ในโหมดสรุป ***] */}
                             <td
-                              className={`px-6 py-4 whitespace-nowrap text-base ${officeTextClassName} ${officeBgClassName} font-semibold 
-                                ${
-                                  selectedFilter !== "aggregate-by-province"
-                                    ? "cursor-pointer hover:underline"
-                                    : ""
-                                }
-                              `}
-                              onClick={() => {
-                                // [*** แก้ไข: เพิ่มเงื่อนไขการ Click ***]
-                                if (
-                                  selectedFilter !== "aggregate-by-province"
-                                ) {
-                                  handleShowDetails(compositeKey);
-                                }
-                              }}
+                              className={`px-6 py-4 whitespace-nowrap text-base ${officeTextClassName} ${officeBgClassName} font-semibold ${
+                                !isProvinceSummary &&
+                                "cursor-pointer hover:underline"
+                              }`}
+                              onClick={
+                                !isProvinceSummary
+                                  ? () => handleShowDetails(compositeKey)
+                                  : undefined
+                              }
                             >
                               {keyF}
                             </td>
@@ -1569,11 +1750,8 @@ const DashboardView = ({ active }: { active: boolean }) => {
                     </tbody>
                     <tfoot className="bg-gray-100 border-t-2 border-gray-300">
                       <tr className="font-bold">
-                        {/* [*** แก้ไข: ปรับ colSpan ***] */}
                         <td
-                          colSpan={
-                            selectedFilter === "aggregate-by-province" ? 1 : 2
-                          }
+                          colSpan="2"
                           className="px-6 py-4 text-right text-base text-gray-800 uppercase"
                         >
                           ยอดรวม (ที่ค้นพบ)
@@ -1655,7 +1833,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                         <DatePicker
                           id="upload-date"
                           selected={uploadDate}
-                          onChange={(date: Date | null) => setUploadDate(date)}
+                          onChange={(date: Date | null) => setUploadDate(date)} // [*** แก้ไข: เพิ่ม Type ***]
                           dateFormat="dd/MM/yyyy"
                           className="mt-1" // ใช้ CSS จาก datepicker.css
                           disabled={isUploading}
@@ -1772,6 +1950,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                   </h4>
                   <p className="text-sm text-gray-500 mb-3 -mt-2">
                     *ยอดรวมนี้เป็นยอดสรุปของช่วงวันที่ที่เลือกทั้งหมด
+                    (ไม่เกี่ยวกับฟิลเตอร์บริการ)
                   </p>
 
                   {/* === [*** แก้ไขสี: purple -> red ***] === */}
@@ -1831,7 +2010,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                       ) : (
                         <tr>
                           <td
-                            colSpan={5}
+                            colSpan="5"
                             className="px-4 py-3 text-center text-gray-500"
                           >
                             ไม่พบข้อมูลรายละเอียด
@@ -1842,7 +2021,7 @@ const DashboardView = ({ active }: { active: boolean }) => {
                     <tfoot className="bg-gray-100 border-t-2">
                       <tr className="font-bold">
                         <td
-                          colSpan={2}
+                          colSpan="2"
                           className="px-4 py-3 text-right text-gray-800"
                         >
                           ยอดรวม:
@@ -1920,15 +2099,16 @@ const DashboardView = ({ active }: { active: boolean }) => {
                         htmlFor="report-date"
                         className="block text-sm font-medium text-gray-700"
                       >
-                        เลือกวันที่
+                        วันที่รายงาน
                       </label>
+                      {/* [*** แก้ไข: ปิดการแก้ไข ***] */}
                       <DatePicker
                         id="report-date"
                         selected={reportDate}
                         onChange={(date: Date | null) => setReportDate(date)}
                         dateFormat="dd/MM/yyyy"
-                        className="mt-1" // ใช้ CSS จาก datepicker.css
-                        disabled={isSubmittingReport}
+                        className="mt-1"
+                        disabled={true} // [*** แก้ไข ***]
                       />
                     </div>
                   </div>
@@ -2024,16 +2204,17 @@ const DashboardView = ({ active }: { active: boolean }) => {
 };
 
 // ######################################################################
-//   [*** แก้ไข: เพิ่มช่อง Search และปรับปรุง Logic การรวมยอด ***]
+//   [*** แก้ไข: เพิ่มปุ่มซ่อน/แสดง ***]
 // ######################################################################
-// ########## [แก้ไข TypeScript Error 9] ##########
-const NotesReportView = ({ active }: { active: boolean }) => {
-  const [allTableData, setAllTableData] = useState<any[]>([]); // [แก้ไข] เปลี่ยนชื่อเป็น allTableData, ระบุ Type
+const NotesReportView = ({ active }: ViewProps) => {
+  // [*** แก้ไข: เพิ่ม Type ***]
+  const [allTableData, setAllTableData] = useState<ReportTableRow[]>([]); // [*** แก้ไข: เพิ่ม Type ***]
   const [isLoading, setIsLoading] = useState(false);
 
   // [ใหม่] State สำหรับ Modal ดูรายละเอียด
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [modalDetailData, setModalDetailData] = useState<any | null>(null); // ระบุ Type
+  const [modalDetailData, setModalDetailData] =
+    useState<ModalDetailData | null>(null); // [*** แก้ไข: เพิ่ม Type ***]
 
   // State สำหรับ Filter (เหมือน Dashboard)
   const [selectedFilter, setSelectedFilter] = useState("all");
@@ -2042,18 +2223,19 @@ const NotesReportView = ({ active }: { active: boolean }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
   // [ใหม่] State สำหรับสรุปยอดรวม (สำหรับกราฟ)
-  const [notesSummary, setNotesSummary] = useState<{
-    data: { [key: string]: number };
-    total: number;
-  }>({ data: {}, total: 0 }); // ระบุ Type
+  // [*** แก้ไข: เพิ่ม Type ***]
+  const [notesSummary, setNotesSummary] = useState<NotesSummary>({
+    data: {},
+    total: 0,
+  });
+
+  // [*** ใหม่: States สำหรับปุ่มซ่อน/แสดง (ปรับปรุง) ***]
+  const [isControlsOpen, setIsControlsOpen] = useState(true);
+  // [*** ลบ: isTableOpen ***]
 
   // ใช้วันที่ของเมื่อวานเป็นค่าเริ่มต้น
-  const [startDate, setStartDate] = useState<Date | null>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d;
-  });
-  const [endDate, setEndDate] = useState<Date | null>(() => {
+  // [*** แก้ไข: State วันที่เดียว ***]
+  const [selectedDate, setSelectedDate] = useState<Date | null>(() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
     return d;
@@ -2061,42 +2243,39 @@ const NotesReportView = ({ active }: { active: boolean }) => {
 
   // [*** นี่คือส่วนที่แก้ไขหลัก ***]
   // ฟังก์ชันดึงข้อมูลที่ปรับปรุงใหม่ทั้งหมด
-  // ########## [แก้ไข TypeScript Error 10] ##########
-  const fetchNotes = async (
-    start: Date | null,
-    end: Date | null,
-    filter: string
-  ) => {
-    if (!start || !end) return;
+  // [*** แก้ไข: เพิ่ม Type ***]
+  const fetchNotes = async (date: Date | null, filter: string) => {
+    // [*** แก้ไข: รับ Date เดียว ***]
+    if (!date) return;
 
     setIsLoading(true);
-    setAllTableData([]); // [แก้ไข]
-    setNotesSummary({ data: {}, total: 0 }); // [ใหม่] รีเซ็ตค่าสรุป
+    setAllTableData([]);
+    setNotesSummary({ data: {}, total: 0 });
 
-    const isoStartDate = formatDateToISO(start);
-    const isoEndDate = formatDateToISO(end);
+    const isoDate = formatDateToISO(date); // [*** แก้ไข: ใช้ Date เดียว ***]
 
     try {
       // 1. ดึงข้อมูล "คนที่รายงานแล้ว" จาก delivery_notes
       const { data: notesData, error: notesError } = await supabase
         .from("delivery_notes")
         .select("*")
-        .gte("report_date", isoStartDate)
-        .lte("report_date", isoEndDate);
+        .eq("report_date", isoDate); // [*** แก้ไข: ใช้ .eq() ***]
 
       if (notesError) throw notesError;
+      const typedNotesData = (notesData as DeliveryNoteRow[]) || []; // [*** แก้ไข: Type assertion ***]
 
-      // 2. ดึงข้อมูล "ที่ทำการทั้งหมด" ที่มีข้อมูลจาก delivery_data
+      // 2. [*** แก้ไข: ดึง valueo มาด้วย ***]
       const { data: officesData, error: officesError } = await supabase
         .from("delivery_data")
-        .select("cole, colf") // ดึงแค่รหัส (cole) และ ชื่อ (colf)
-        .gte("report_date", isoStartDate)
-        .lte("report_date", isoEndDate);
+        .select("cole, colf, valueo") // <-- เพิ่ม valueo
+        .eq("report_date", isoDate); // [*** แก้ไข: ใช้ .eq() ***]
 
       if (officesError) throw officesError;
+      const typedOfficesData =
+        (officesData as { cole: string; colf: string; valueo: number }[]) || []; // [*** แก้ไข: Type assertion ***]
 
       // 3. สร้าง Filter Set (เหมือน Dashboard)
-      let filterSet: Set<string> | null = null; // ระบุ Type
+      let filterSet: Set<string> | null = null; // [*** แก้ไข: เพิ่ม Type ***]
       if (filter === "nakhon-sawan") filterSet = nakhonSawanSet;
       else if (filter === "uthai-thani") filterSet = uthaiThaniSet;
       else if (filter === "kamphaeng-phet") filterSet = kamphaengPhetSet;
@@ -2108,36 +2287,47 @@ const NotesReportView = ({ active }: { active: boolean }) => {
       else if (filter === "sp-nakhon-sawan") filterSet = spNakhonSawanSet;
       else if (filter === "sp-phitsanulok") filterSet = spPhitsanulokSet;
 
-      // 4. กรองที่ทำการให้ไม่ซ้ำกัน (De-duplicate) และ "ต้องตรง Filter"
-      const uniqueOfficesMap = new Map<string, string>(); // ระบุ Type
-      (officesData || []).forEach((item) => {
+      // 4. [*** แก้ไข: สร้าง Map 2 อัน ***]
+      // อันที่ 1: ที่ทำการทั้งหมดใน filter
+      const uniqueOfficesMap = new Map<string, string>(); // [*** แก้ไข: เพิ่ม Type ***]
+      // อันที่ 2: ยอดรวม O ของแต่ละที่ทำการ
+      const officeFailureMap = new Map<string, number>(); // <postal_code, sumO>
+
+      typedOfficesData.forEach((item) => {
+        // [*** แก้ไข: เพิ่ม Type ***]
         const pCode = String(item.cole);
         if (filterSet && !filterSet.has(pCode)) {
           return; // ข้ามถ้าไม่ตรง filter
         }
+
+        // Add to unique list
         if (!uniqueOfficesMap.has(pCode)) {
           uniqueOfficesMap.set(pCode, item.colf);
         }
+
+        // Aggregate 'O'
+        const currentO = officeFailureMap.get(pCode) || 0;
+        officeFailureMap.set(pCode, currentO + (item.valueo || 0));
       });
 
       // 5. [*** REVISED LOGIC ***]
       // Aggregate notes *by postal code* for the date range and filter
 
-      const aggregatedNotesMap = new Map<
-        string,
-        {
-          total_notes: number;
-          notes_data: { [key: string]: number };
-          last_report_date: string;
-        }
-      >(); // ระบุ Type
+      // [*** แก้ไข: เพิ่ม Type ***]
+      type AggNote = {
+        total_notes: number;
+        notes_data: { [key: string]: number };
+        last_report_date: string;
+      };
+      const aggregatedNotesMap = new Map<string, AggNote>(); // Stores the *sum* for each office
       const grandTotalSummary = REPORT_REASONS.reduce(
-        (acc: { [key: string]: number }, r) => ({ ...acc, [r.key]: 0 }),
-        {}
-      ); // ระบุ Type
+        (acc, r) => ({ ...acc, [r.key]: 0 }),
+        {} as { [key: string]: number }
+      );
       let grandTotalCount = 0;
 
-      (notesData || []).forEach((note) => {
+      typedNotesData.forEach((note) => {
+        // [*** แก้ไข: เพิ่ม Type ***]
         // Check if this note's office is in our *filtered* list of offices
         if (!uniqueOfficesMap.has(note.postal_code)) {
           return; // Skip this note, it's not in the selected filter
@@ -2146,38 +2336,27 @@ const NotesReportView = ({ active }: { active: boolean }) => {
         // --- It's in the filter, so process it ---
 
         // A. Process for Table (per-office aggregation)
-        const currentAgg = aggregatedNotesMap.get(note.postal_code) || {
-          total_notes: 0,
-          notes_data: REPORT_REASONS.reduce(
-            (acc: { [key: string]: number }, r) => ({ ...acc, [r.key]: 0 }),
-            {}
-          ), // ระบุ Type
-          last_report_date: note.report_date, // Start with this date
-        };
+        // [*** แก้ไข: เนื่องจากเลือกวันเดียว ไม่ต้องรวมยอด ***]
+        const currentAgg = aggregatedNotesMap.get(note.postal_code);
+        if (!currentAgg) {
+          // ใส่ข้อมูลครั้งเดียว
+          const notes_data: { [key: string]: number } = {};
+          REPORT_REASONS.forEach((reason) => {
+            notes_data[reason.key] =
+              parseInt(note.notes_data[reason.key] || "0") || 0;
+          });
 
-        const newTotal = currentAgg.total_notes + (note.total_notes || 0);
-        const newNotesData = { ...currentAgg.notes_data };
-
-        Object.entries(note.notes_data).forEach(([key, value]) => {
-          if (newNotesData.hasOwnProperty(key)) {
-            newNotesData[key] += parseInt(String(value)) || 0; // แปลง value
-          }
-        });
-
-        aggregatedNotesMap.set(note.postal_code, {
-          total_notes: newTotal,
-          notes_data: newNotesData,
-          // Keep the *latest* report date from the range
-          last_report_date:
-            note.report_date > currentAgg.last_report_date
-              ? note.report_date
-              : currentAgg.last_report_date,
-        });
+          aggregatedNotesMap.set(note.postal_code, {
+            total_notes: note.total_notes,
+            notes_data: notes_data,
+            last_report_date: note.report_date,
+          });
+        }
 
         // B. Process for Graph (grand total aggregation)
         Object.entries(note.notes_data).forEach(([key, value]) => {
           if (grandTotalSummary.hasOwnProperty(key)) {
-            const numValue = parseInt(String(value)) || 0; // แปลง value
+            const numValue = parseInt(value) || 0;
             grandTotalSummary[key] += numValue;
             grandTotalCount += numValue;
           }
@@ -2186,51 +2365,73 @@ const NotesReportView = ({ active }: { active: boolean }) => {
 
       setNotesSummary({ data: grandTotalSummary, total: grandTotalCount });
 
-      // 6. สร้างข้อมูลสำหรับตาราง (Join กัน)
-      const finalTableData: any[] = []; // ระบุ Type
+      // 6. [*** แก้ไข: สร้าง Logic สถานะใหม่ ***]
+      const finalTableData: ReportTableRow[] = []; // [*** แก้ไข: เพิ่ม Type ***]
       uniqueOfficesMap.forEach((office_name, postal_code) => {
         const aggregatedReport = aggregatedNotesMap.get(postal_code); // Get the *sum*
+        const sumO = officeFailureMap.get(postal_code) || 0; // [*** ใหม่ ***]
 
-        // [ใหม่] สร้าง Object ที่มีข้อมูลหมายเหตุ (สำหรับ 21 คอลัมน์)
-        const notesDetail: { [key: string]: number } = {}; // ระบุ Type
-        // If reported, fill details
+        const is_reported = !!aggregatedReport;
+        let status: "reported" | "not_reported" | "no_failure"; // [*** ใหม่ ***]
+
+        if (is_reported) {
+          status = "reported";
+        } else if (sumO > 0) {
+          status = "not_reported"; // มี O แต่ไม่รายงาน
+        } else {
+          status = "no_failure"; // O = 0 เลยไม่รายงาน
+        }
+
+        // [*** แก้ไข: สร้าง object นี้สำหรับเก็บข้อมูลหมายเหตุ 21 ช่อง ***]
+        const notes_data_aggregated: { [key: string]: number } = {};
+
         if (aggregatedReport) {
           REPORT_REASONS.forEach((reason) => {
-            notesDetail[reason.key] =
+            notes_data_aggregated[reason.key] =
               aggregatedReport.notes_data[reason.key] || 0;
           });
         } else {
-          // If not reported, fill with 0
           REPORT_REASONS.forEach((reason) => {
-            notesDetail[reason.key] = 0;
+            notes_data_aggregated[reason.key] = 0;
           });
         }
 
         finalTableData.push({
           postal_code: postal_code,
           office_name: office_name,
-          is_reported: !!aggregatedReport, // Reported if we have *any* data
+          is_reported: is_reported,
+          status: status, // [*** ใหม่ ***]
           report_date: aggregatedReport
             ? aggregatedReport.last_report_date
             : null, // Show last report date
           total_notes: aggregatedReport ? aggregatedReport.total_notes : 0,
-          ...notesDetail, // [ใหม่] แตกคอลัมน์ 0, 1, 2, ...
+          notes_data_aggregated: notes_data_aggregated, // [*** แก้ไข: ส่งเป็น object ***]
         });
       });
 
-      // 7. เรียงลำดับ (ยังไม่รายงาน ขึ้นก่อน)
+      // 7. [*** แก้ไข: Logic การเรียงลำดับ ***]
+      const getStatusSortScore = (
+        status: "reported" | "not_reported" | "no_failure"
+      ) => {
+        if (status === "not_reported") return 1; // ❌ แดง ขึ้นก่อน
+        if (status === "reported") return 2; // ✅ เขียว
+        if (status === "no_failure") return 3; // - เทา
+        return 4;
+      };
+
       finalTableData.sort((a, b) => {
-        if (a.is_reported === b.is_reported) {
-          return a.postal_code.localeCompare(b.postal_code); // ถ้าสถานะเหมือนกัน ให้เรียงตามรหัส
+        const scoreA = getStatusSortScore(a.status);
+        const scoreB = getStatusSortScore(b.status);
+        if (scoreA !== scoreB) {
+          return scoreA - scoreB;
         }
-        return a.is_reported ? 1 : -1; // false (ยังไม่รายงาน) มาก่อน true
+        return a.postal_code.localeCompare(b.postal_code);
       });
 
-      setAllTableData(finalTableData); // [แก้ไข]
-    } catch (error: any) {
-      // ระบุ Type
+      setAllTableData(finalTableData);
+    } catch (error) {
       console.error("Error fetching notes data:", error);
-      alert("ไม่สามารถดึงข้อมูลได้: " + error.message);
+      alert("ไม่สามารถดึงข้อมูลได้: " + (error as Error).message); // [*** แก้ไข: Type assertion ***]
     } finally {
       setIsLoading(false);
     }
@@ -2239,50 +2440,65 @@ const NotesReportView = ({ active }: { active: boolean }) => {
   // Effect นี้จะทำงานเมื่อ active, วันที่, หรือ filter เปลี่ยน
   useEffect(() => {
     if (active) {
-      fetchNotes(startDate, endDate, selectedFilter);
+      fetchNotes(selectedDate, selectedFilter); // [*** แก้ไข: ส่ง Date เดียว ***]
     }
-  }, [active, startDate, endDate, selectedFilter]);
+  }, [active, selectedDate, selectedFilter]); // [*** แก้ไข: เปลี่ยน dependency ***]
 
   // [*** ใหม่: useMemo สำหรับกรองข้อมูลด้วย Search ***]
-  const filteredTableData = useMemo(() => {
+  const filteredTableData = useMemo((): ReportTableRow[] => {
+    // [*** แก้ไข: เพิ่ม Type ***]
     if (searchTerm.trim() === "") {
       return allTableData; // No search, return all
     }
 
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
 
-    return allTableData.filter((row) => {
+    return allTableData.filter((row: ReportTableRow) => {
       const nameMatch = row.office_name.toLowerCase().includes(lowerSearchTerm);
       const codeMatch = row.postal_code.includes(lowerSearchTerm);
       return nameMatch || codeMatch;
     });
   }, [allTableData, searchTerm]);
 
-  // [*** ใหม่: useMemo สำหรับคำนวณ KPI Cards ***]
+  // [*** แก้ไข: ปรับ Logic การคำนวณ KPI ***]
   const notesKPIs = useMemo(() => {
-    const totalOffices = allTableData.length; // [แก้ไข] ใช้ allTableData
+    const totalOffices = allTableData.length;
     if (totalOffices === 0) {
       return {
         totalOffices: 0,
         reportedOffices: 0,
         notReportedOffices: 0,
+        totalRequiredToReport: 0, // [*** ใหม่ ***]
         complianceRate: 0,
       };
     }
 
+    // [*** นี่คือ Logic ใหม่ที่ถูกต้อง ***]
     const reportedOffices = allTableData.filter(
-      (office) => office.is_reported
-    ).length; // [แก้ไข]
-    const notReportedOffices = totalOffices - reportedOffices;
-    const complianceRate = (reportedOffices / totalOffices) * 100;
+      (office) => office.status === "reported"
+    ).length;
+    const notReportedOffices = allTableData.filter(
+      (office) => office.status === "not_reported"
+    ).length;
+
+    // จำนวนที่ทำการที่ "จำเป็นต้องรายงาน" (คือมี O > 0)
+    const totalRequiredToReport = reportedOffices + notReportedOffices; // [*** ใหม่ ***]
+
+    // อัตราการรายงาน = (คนที่รายงานแล้ว) / (คนที่จำเป็นต้องรายงาน)
+    // ถ้าไม่มีใครต้องรายงานเลย (เช่น ทุกคน O=0) ให้ถือเป็น 100%
+    const complianceRate =
+      totalRequiredToReport > 0
+        ? (reportedOffices / totalRequiredToReport) * 100
+        : 100;
 
     return {
       totalOffices,
       reportedOffices,
       notReportedOffices,
+      totalRequiredToReport, // [*** ใหม่ ***]
       complianceRate,
     };
-  }, [allTableData]); // [แก้ไข]
+  }, [allTableData]);
 
   // [*** ใหม่: useMemo สำหรับ Top 3 หมายเหตุ ***]
   const topNotesKPIs = useMemo(() => {
@@ -2290,8 +2506,9 @@ const NotesReportView = ({ active }: { active: boolean }) => {
       return [];
     }
 
+    // [*** แก้ไข: เพิ่ม Type ***]
     const sortedNotes = Object.entries(notesSummary.data)
-      .map(([key, value]) => ({
+      .map(([key, value]: [string, number]) => ({
         key,
         value,
         label: reasonLabelMap.get(key) || "Unknown", // Get label from the map
@@ -2302,21 +2519,14 @@ const NotesReportView = ({ active }: { active: boolean }) => {
     return sortedNotes.slice(0, 3); // Get Top 3
   }, [notesSummary]);
 
-  // ########## [แก้ไข TypeScript Error 11] ##########
-  // [ใหม่] ฟังก์ชันสำหรับ Modal
-  const handleShowReportDetails = (data: any) => {
+  // [*** แก้ไข: เพิ่ม Type ***]
+  const handleShowReportDetails = (data: ReportTableRow) => {
     // แปลงข้อมูลแถวกลับเป็น object ที่ modal รู้จัก
     setModalDetailData({
       office_name: data.office_name,
       // report_date: data.report_date, // [*** แก้ไข ***] ไม่ใช้วันที่ล่าสุด
       total_notes: data.total_notes, // [*** แก้ไข ***] นี่คือยอดรวม
-      notes_data: REPORT_REASONS.reduce(
-        (acc: { [key: string]: number }, reason) => {
-          acc[reason.key] = data[reason.key] || 0; // [*** แก้ไข ***] นี่คือยอดรวม
-          return acc;
-        },
-        {}
-      ), // ระบุ Type
+      notes_data: data.notes_data_aggregated, // [*** แก้ไข: ใช้ object ที่รวมยอดแล้ว ***]
     });
     setIsDetailModalOpen(true);
   };
@@ -2337,235 +2547,257 @@ const NotesReportView = ({ active }: { active: boolean }) => {
             </h1>
             <p className="text-lg text-gray-500 mt-1">
               ตรวจสอบสถานะการรายงานของที่ทำการในสังกัด{" "}
-              {
-                filterDisplayNames[
-                  selectedFilter as keyof typeof filterDisplayNames
-                ]
-              }
+              {filterDisplayNames[selectedFilter]}
             </p>
           </div>
 
-          {/* --- [*** แก้ไข: เพิ่มช่อง Search ***] --- */}
-          <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-            <h3 className="text-lg font-semibold text-gray-700 mb-1">
-              🗓️ เลือกช่วงวันที่ & ค้นหา
-            </h3>
-            {/* Date Pickers */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="notes-start-date"
-                  className="block text-sm font-medium text-gray-700"
+          {/* [*** ใหม่: ปุ่มซ่อน/แสดง (ปรับปรุง) ***] */}
+          <div className="mb-4 flex justify-end space-x-2">
+            <button
+              onClick={() => setIsControlsOpen(!isControlsOpen)}
+              className="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors flex items-center"
+            >
+              {isControlsOpen ? (
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  วันที่เริ่มต้น
-                </label>
-                <DatePicker
-                  id="notes-start-date"
-                  selected={startDate}
-                  onChange={(date: Date | null) => setStartDate(date)}
-                  selectsStart
-                  startDate={startDate}
-                  endDate={endDate}
-                  dateFormat="dd/MM/yyyy"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="notes-end-date"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  วันที่สิ้นสุด
-                </label>
-                <DatePicker
-                  id="notes-end-date"
-                  selected={endDate}
-                  onChange={(date: Date | null) => setEndDate(date)}
-                  selectsEnd
-                  startDate={startDate}
-                  endDate={endDate}
-                  minDate={startDate || undefined}
-                  dateFormat="dd/MM/yyyy"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            {/* [*** ใหม่: Search Input ***] */}
-            <div className="w-full mt-4">
-              <label htmlFor="notes-search-input" className="sr-only">
-                ค้นหา...
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     strokeWidth="2"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-                <input
-                  id="notes-search-input" // Unique ID
-                  type="text"
-                  placeholder="ค้นหา (รหัสไปรษณีย์ / ที่ทำการ)..."
-                  value={searchTerm} // New state
-                  onChange={(e) => setSearchTerm(e.target.value)} // New state setter
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base py-2.5 pl-10 pr-3"
-                />
-              </div>
-            </div>
-            {/* [*** จบ Search Input ***] */}
+                    d="M5 15l7-7 7 7"
+                  ></path>
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  ></path>
+                </svg>
+              )}
+              {isControlsOpen ? "ซ่อน" : "แสดง"} ตั้งค่า
+            </button>
+
+            {/* [*** ลบปุ่มซ่อนตารางออก ***] */}
           </div>
 
-          {/* [ใหม่] Card 3: ตัวกรองสังกัด (เหมือน Dashboard) */}
-          <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-            <h3 className="text-lg font-semibold text-gray-700 mb-4">
-              🏢 กรองตามสังกัด
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedFilter("all")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "all"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                แสดงทั้งหมด
-              </button>
-              <button
-                onClick={() => setSelectedFilter("nakhon-sawan")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "nakhon-sawan"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                ปจ.นครสวรรค์
-              </button>
-              <button
-                onClick={() => setSelectedFilter("uthai-thani")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "uthai-thani"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                ปจ.อุทัยธานี
-              </button>
-              <button
-                onClick={() => setSelectedFilter("kamphaeng-phet")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "kamphaeng-phet"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                ปจ.กำแพงเพชร
-              </button>
-              <button
-                onClick={() => setSelectedFilter("tak")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "tak"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                ปจ.ตาก
-              </button>
-              <button
-                onClick={() => setSelectedFilter("sukhothai")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "sukhothai"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                ปจ.สุโขทัย
-              </button>
-              <button
-                onClick={() => setSelectedFilter("phitsanulok")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "phitsanulok"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                ปจ.พิษณุโลก
-              </button>
-              <button
-                onClick={() => setSelectedFilter("phichit")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "phichit"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                ปจ.พิจิตร
-              </button>
-              <button
-                onClick={() => setSelectedFilter("phetchabun")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "phetchabun"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                ปจ.เพชรบูรณ์
-              </button>
-              <button
-                onClick={() => setSelectedFilter("sp-nakhon-sawan")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "sp-nakhon-sawan"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                ศป.นครสวรรค์
-              </button>
-              <button
-                onClick={() => setSelectedFilter("sp-phitsanulok")}
-                className={`py-2 px-5 rounded-lg font-semibold transition-colors
-                    ${
-                      selectedFilter === "sp-phitsanulok"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-              >
-                ศป.พิษณุโลก
-              </button>
-            </div>
-          </div>
+          {/* [*** แก้ไข: เพิ่ม isControlsOpen ***] */}
+          {isControlsOpen && (
+            <>
+              {/* --- [*** แก้ไข: เปลี่ยนเป็น Date เดียว ***] --- */}
+              <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-1">
+                  🗓️ เลือกวันที่ & ค้นหา
+                </h3>
+                {/* Date Pickers */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="notes-date"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      เลือกวันที่
+                    </label>
+                    <DatePicker
+                      id="notes-date"
+                      selected={selectedDate}
+                      onChange={(date: Date | null) => setSelectedDate(date)} // [*** แก้ไข: เพิ่ม Type ***]
+                      dateFormat="dd/MM/yyyy"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                {/* [*** ใหม่: Search Input ***] */}
+                <div className="w-full mt-4">
+                  <label htmlFor="notes-search-input" className="sr-only">
+                    ค้นหา...
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      id="notes-search-input" // Unique ID
+                      type="text"
+                      placeholder="ค้นหา (รหัสไปรษณีย์ / ที่ทำการ)..."
+                      value={searchTerm} // New state
+                      onChange={(e) => setSearchTerm(e.target.value)} // New state setter
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base py-2.5 pl-10 pr-3"
+                    />
+                  </div>
+                </div>
+                {/* [*** จบ Search Input ***] */}
+              </div>
+
+              {/* [ใหม่] Card 3: ตัวกรองสังกัด (เหมือน Dashboard) */}
+              <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                  🏢 กรองตามสังกัด
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedFilter("all")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "all"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    แสดงทั้งหมด
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("nakhon-sawan")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "nakhon-sawan"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    ปจ.นครสวรรค์
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("uthai-thani")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "uthai-thani"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    ปจ.อุทัยธานี
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("kamphaeng-phet")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "kamphaeng-phet"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    ปจ.กำแพงเพชร
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("tak")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "tak"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    ปจ.ตาก
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("sukhothai")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "sukhothai"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    ปจ.สุโขทัย
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("phitsanulok")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "phitsanulok"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    ปจ.พิษณุโลก
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("phichit")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "phichit"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    ปจ.พิจิตร
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("phetchabun")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "phetchabun"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    ปจ.เพชรบูรณ์
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("sp-nakhon-sawan")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "sp-nakhon-sawan"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    ศป.นครสวรรค์
+                  </button>
+                  <button
+                    onClick={() => setSelectedFilter("sp-phitsanulok")}
+                    className={`py-2 px-5 rounded-lg font-semibold transition-colors
+                        ${
+                          selectedFilter === "sp-phitsanulok"
+                            ? "bg-red-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }
+                      `}
+                  >
+                    ศป.พิษณุโลก
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* [*** ใหม่: สถานะกำลังโหลด ***] */}
           {isLoading && (
@@ -2609,7 +2841,7 @@ const NotesReportView = ({ active }: { active: boolean }) => {
             </div>
           )}
 
-          {/* [*** ใหม่: กล่องรายงานหลัก (หุ้ม KPI + ตาราง) ***] */}
+          {/* [*** แก้ไข: ลบ isTableOpen ***] */}
           {!isLoading && allTableData.length > 0 && (
             <div className="bg-white rounded-lg shadow-xl overflow-hidden mb-8">
               {/* [*** KPI Cards การรายงาน ***] */}
@@ -2638,8 +2870,10 @@ const NotesReportView = ({ active }: { active: boolean }) => {
                   <p className="text-4xl font-bold text-green-600 mt-2">
                     {notesKPIs.reportedOffices.toLocaleString()}
                   </p>
+                  {/* [*** แก้ไข: denominator ***] */}
                   <p className="text-sm text-gray-400 mt-1">
-                    / {notesKPIs.totalOffices.toLocaleString()} ที่ทำการ
+                    / {notesKPIs.totalRequiredToReport.toLocaleString()}{" "}
+                    ที่ต้องรายงาน
                   </p>
                 </div>
 
@@ -2653,8 +2887,10 @@ const NotesReportView = ({ active }: { active: boolean }) => {
                   <p className="text-4xl font-bold text-red-600 mt-2">
                     {notesKPIs.notReportedOffices.toLocaleString()}
                   </p>
+                  {/* [*** แก้ไข: denominator ***] */}
                   <p className="text-sm text-gray-400 mt-1">
-                    / {notesKPIs.totalOffices.toLocaleString()} ที่ทำการ
+                    / {notesKPIs.totalRequiredToReport.toLocaleString()}{" "}
+                    ที่ต้องรายงาน
                   </p>
                 </div>
               </div>
@@ -2754,7 +2990,7 @@ const NotesReportView = ({ active }: { active: boolean }) => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {/* [แก้ไข] ย้าย Loading/NoData ออกไปข้างนอกแล้ว */}
+                      {/* [*** แก้ไข: ใช้ filteredTableData ***] */}
                       {filteredTableData.map((row) => (
                         <tr key={row.postal_code} className="hover:bg-gray-50">
                           {/* [แก้ไข] sticky left-0 */}
@@ -2762,10 +2998,21 @@ const NotesReportView = ({ active }: { active: boolean }) => {
                             {row.office_name} ({row.postal_code})
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-base font-semibold">
-                            {row.is_reported ? (
-                              <span className="text-green-600">✅</span>
-                            ) : (
-                              <span className="text-red-600">❌</span>
+                            {/* [*** แก้ไข: Logic สถานะใหม่ ***] */}
+                            {row.status === "reported" && (
+                              <span className="text-green-600">
+                                ✅ รายงานแล้ว
+                              </span>
+                            )}
+                            {row.status === "not_reported" && (
+                              <span className="text-red-600">
+                                ❌ ยังไม่รายงาน
+                              </span>
+                            )}
+                            {row.status === "no_failure" && (
+                              <span className="text-gray-500">
+                                - (ไม่มีเหตุ)
+                              </span>
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
@@ -2791,15 +3038,15 @@ const NotesReportView = ({ active }: { active: boolean }) => {
                             )}
                           </td>
 
-                          {/* [ใหม่] 21 คอลัมน์ข้อมูล */}
+                          {/* [*** แก้ไข: ดึงข้อมูลจาก notes_data_aggregated ***] */}
                           {REPORT_REASONS.map((reason) => (
                             <td
                               key={reason.key}
                               className="px-6 py-4 whitespace-nowrap text-base text-gray-800"
                             >
                               {row.is_reported
-                                ? row[reason.key] > 0
-                                  ? row[reason.key]
+                                ? row.notes_data_aggregated[reason.key] > 0
+                                  ? row.notes_data_aggregated[reason.key]
                                   : "-"
                                 : "-"}
                             </td>
@@ -2813,53 +3060,79 @@ const NotesReportView = ({ active }: { active: boolean }) => {
             </div>
           )}
 
-          {/* [*** ใหม่: ส่วนสรุปและกราฟ (Bar Chart) ***] */}
+          {/* [*** ใหม่: ส่วนสรุปและกราฟ (Pie Chart + Bar Chart) ***] */}
           {!isLoading && notesSummary.total > 0 && (
             <div className="bg-white rounded-lg shadow-xl p-6 mt-8">
               <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                สรุปหมายเหตุรวม (สังกัด{" "}
-                {
-                  filterDisplayNames[
-                    selectedFilter as keyof typeof filterDisplayNames
-                  ]
-                }
-                )
+                สรุปหมายเหตุรวม (สังกัด {filterDisplayNames[selectedFilter]})
               </h2>
               <h3 className="text-lg text-gray-600 mb-6">
                 ยอดรวม {notesSummary.total.toLocaleString()} รายการ
               </h3>
 
-              <div className="space-y-4">
-                {/* [ใหม่] เรียงลำดับข้อมูลก่อนแสดงผล */}
-                {REPORT_REASONS.map((reason) => ({
-                  ...reason,
-                  value: notesSummary.data[reason.key] || 0,
-                  percentage:
-                    ((notesSummary.data[reason.key] || 0) /
-                      (notesSummary.total || 1)) *
-                    100,
-                }))
-                  .filter((reason) => reason.value > 0) // กรองเฉพาะที่มีค่า
-                  .sort((a, b) => b.value - a.value) // เรียงจากมากไปน้อย
-                  .map((reason) => (
-                    <div key={reason.key}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-gray-700">
-                          {reason.key} - {reason.label}
-                        </span>
-                        <span className="text-sm font-bold text-gray-900">
-                          {reason.value.toLocaleString()} (
-                          {reason.percentage.toFixed(1)}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div
-                          className="bg-red-600 h-2.5 rounded-full" // [*** แก้ไขสี ***]
-                          style={{ width: `${reason.percentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
+              {/* [*** ใหม่: Grid 2-column layout ***] */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                {/* --- Column 1: Pie Chart --- */}
+                <div className="w-full max-w-md mx-auto">
+                  <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">
+                    สัดส่วน (Pie Chart)
+                  </h4>
+                  <div className="w-full max-w-md mx-auto">
+                    <NotesPieChart
+                      notesSummary={notesSummary}
+                      reasonMap={reasonLabelMap}
+                    />
+                  </div>
+                </div>
+
+                {/* --- Column 2: Bar Chart List --- */}
+                <div className="w-full">
+                  <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">
+                    รายการทั้งหมด (Bar Chart)
+                  </h4>
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                    {REPORT_REASONS.map((reason) => ({
+                      ...reason,
+                      value: notesSummary.data[reason.key] || 0,
+                      percentage:
+                        ((notesSummary.data[reason.key] || 0) /
+                          (notesSummary.total || 1)) *
+                        100,
+                    }))
+                      .filter((reason) => reason.value > 0) // กรองเฉพาะที่มีค่า
+                      .sort((a, b) => b.value - a.value) // เรียงจากมากไปน้อย
+                      // [*** แก้ไข: เพิ่ม Type ***]
+                      .map(
+                        (reason: {
+                          key: string;
+                          label: string;
+                          value: number;
+                          percentage: number;
+                        }) => (
+                          <div key={reason.key}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span
+                                className="text-sm font-medium text-gray-700 truncate"
+                                title={`${reason.key} - ${reason.label}`}
+                              >
+                                {reason.key} - {reason.label}
+                              </span>
+                              <span className="text-sm font-bold text-gray-900 flex-shrink-0 ml-2">
+                                {reason.value.toLocaleString()} (
+                                {reason.percentage.toFixed(1)}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                              <div
+                                className="bg-red-600 h-2.5 rounded-full" // [*** แก้ไขสี ***]
+                                style={{ width: `${reason.percentage}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )
+                      )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2903,11 +3176,8 @@ const NotesReportView = ({ active }: { active: boolean }) => {
               </h4>
               {/* [*** แก้ไข: แสดง Date Range ***] */}
               <p className="text-lg text-gray-600 mb-4">
-                {formatDateToISO(startDate) === formatDateToISO(endDate)
-                  ? `ข้อมูลวันที่ ${formatToFullThaiDate(startDate)}`
-                  : `ข้อมูล ${formatToFullThaiDate(
-                      startDate
-                    )} ถึง ${formatToFullThaiDate(endDate)}`}
+                {/* [*** แก้ไข: ใช้ selectedDate ***] */}
+                {`ข้อมูลวันที่ ${formatToFullThaiDate(selectedDate)}`}
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
@@ -2954,11 +3224,56 @@ const NotesReportView = ({ active }: { active: boolean }) => {
     </div>
   );
 };
+
+// ######################################################################
+//   [*** แก้ไข: เพิ่มแท็บใหม่ ***]
+// ######################################################################
+
+// [*** ใหม่: Component หน้า "ประสิทธิภาพการโทร" ***]
+const CallReportView = ({ active }: ViewProps) => {
+  return (
+    <div className={`${active ? "block" : "hidden"}`}>
+      <div className="min-h-screen bg-gray-100 text-gray-900 p-8">
+        <div className="mx-auto">
+          {/* --- หัวเรื่อง --- */}
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">
+              ประสิทธิภาพการโทร
+            </h1>
+          </div>
+
+          {/* --- เนื้อหา --- */}
+          <div className="bg-white rounded-lg shadow-xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+            <svg
+              className="w-16 h-16 text-gray-400 mb-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.83-5.83M11.42 15.17l.02.02M11.42 15.17L6.87 20.72a2.652 2.652 0 01-3.75 0L1.5 19.17a2.652 2.652 0 010-3.75L7.25 9.67l4.17 4.17zM11.42 15.17l5.83-5.83a2.652 2.652 0 000-3.75L15.17 1.5a2.652 2.652 0 00-3.75 0L5.58 7.33l4.17 4.17 1.67-1.67z"
+              />
+            </svg>
+            <h2 className="text-2xl font-semibold text-gray-700 mb-2">
+              Under Development
+            </h2>
+            <p className="text-lg text-gray-500">Coming Soon</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ######################################################################
 //   Component หลัก (ตัวสลับหน้า)
 // ######################################################################
 export default function Home() {
-  const [activeView, setActiveView] = useState("dashboard"); // 'dashboard' หรือ 'notes'
+  const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'calls', 'notes'
 
   return (
     <div>
@@ -2974,6 +3289,18 @@ export default function Home() {
         >
           Dashboard
         </button>
+        {/* [*** ปุ่มใหม่ ***] */}
+        <button
+          onClick={() => setActiveView("calls")}
+          className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
+            activeView === "calls"
+              ? "bg-red-600 text-white"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          ประสิทธิภาพการโทร
+        </button>
+        {/* [*** จบปุ่มใหม่ ***] */}
         <button
           onClick={() => setActiveView("notes")}
           className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
@@ -2985,10 +3312,10 @@ export default function Home() {
           รายงานหมายเหตุ
         </button>
       </div>
-
       {/* --- ส่วนแสดงผล (สลับตาม activeView) --- */}
-
       <DashboardView active={activeView === "dashboard"} />
+      <CallReportView active={activeView === "calls"} />{" "}
+      {/* [*** เพิ่ม View ใหม่ ***] */}
       <NotesReportView active={activeView === "notes"} />
     </div>
   );
