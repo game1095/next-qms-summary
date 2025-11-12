@@ -1191,7 +1191,7 @@ const DashboardView = ({ active }: ViewProps) => {
                             selectsEnd
                             startDate={startDate}
                             endDate={endDate}
-                            minDate={startDate} // ป้องกันการเลือกวันที่สิ้นสุดก่อนวันเริ่ม
+                            minDate={startDate || undefined} // [**แก้ตรงนี้ครับ**]
                             dateFormat="dd/MM/yyyy"
                             className="mt-1"
                           />
