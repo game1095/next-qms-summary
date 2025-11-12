@@ -3184,7 +3184,7 @@ const NotesReportView = ({ active }: ViewProps) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                 {REPORT_REASONS.map((reason) => {
                   const value = modalDetailData.notes_data[reason.key] || 0;
-                  if (value === 0 || value === "") return null; // ไม่แสดงถ้าค่าเป็น 0 หรือว่าง
+                  if (value === 0) return null; // ไม่แสดงถ้าค่าเป็น 0
 
                   return (
                     <div
