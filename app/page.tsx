@@ -282,7 +282,8 @@ const spPhitsanulokCodes = ["65010"];
 const spPhitsanulokSet = new Set(spPhitsanulokCodes);
 
 // [*** แก้ไข: ย้าย filterDisplayNames มา Global ***]
-const filterDisplayNames = {
+// [*** แก้ไข: ย้าย filterDisplayNames มา Global ***]
+const filterDisplayNames: { [key: string]: string } = {
   all: "ปข.6 (ทุกที่ทำการ)",
   "province-summary": "ปข.6 (สรุปตาม ปจ.)", // [*** ใหม่ ***]
   "nakhon-sawan": "ปจ.นครสวรรค์",
