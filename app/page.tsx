@@ -1752,7 +1752,7 @@ const DashboardView = ({ active }: ViewProps) => {
                     <tfoot className="bg-gray-100 border-t-2 border-gray-300">
                       <tr className="font-bold">
                         <td
-                          colSpan="2"
+                          colSpan={2}
                           className="px-6 py-4 text-right text-base text-gray-800 uppercase"
                         >
                           ยอดรวม (ที่ค้นพบ)
