@@ -3288,7 +3288,7 @@ export default function Home() {
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          Dashboard
+          ประสิทธิภาพการนำจ่าย
         </button>
         {/* [*** ปุ่มใหม่ ***] */}
         <button
