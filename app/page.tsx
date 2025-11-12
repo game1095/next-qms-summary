@@ -315,7 +315,7 @@ const formatDateToISO = (date: Date | null) => {
   const yearAD = date.getFullYear();
   const month = date.getMonth() + 1; // getMonth() returns 0-11
   const day = date.getDate();
-  const pad = (num) => String(num).padStart(2, "0");
+  const pad = (num: number) => String(num).padStart(2, "0");
   return `${yearAD}-${pad(month)}-${pad(day)}`;
 };
 
@@ -586,7 +586,7 @@ const DashboardView = ({ active }: ViewProps) => {
 
     setUploadFileNames((prev) => ({ ...prev, [fileKey]: file.name }));
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = (event: ProgressEvent<FileReader>) => {
       const buffer = event?.target?.result;
       if (!buffer) return;
       const workbook = XLSX.read(buffer, { type: "array" });
