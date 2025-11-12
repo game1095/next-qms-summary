@@ -2011,7 +2011,7 @@ const DashboardView = ({ active }: ViewProps) => {
                       ) : (
                         <tr>
                           <td
-                            colSpan="5"
+                            colSpan={5}
                             className="px-4 py-3 text-center text-gray-500"
                           >
                             ไม่พบข้อมูลรายละเอียด
@@ -2022,7 +2022,7 @@ const DashboardView = ({ active }: ViewProps) => {
                     <tfoot className="bg-gray-100 border-t-2">
                       <tr className="font-bold">
                         <td
-                          colSpan="2"
+                          colSpan={2}
                           className="px-4 py-3 text-right text-gray-800"
                         >
                           ยอดรวม:
