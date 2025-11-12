@@ -1628,13 +1628,6 @@ const DashboardView = ({ active }: ViewProps) => {
                           className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider"
                         >
                           {/* [*** แก้ไข: เปลี่ยนหัวตาราง ***] */}
-                          {isProvinceSummary ? "สังกัด" : "รหัสไปรษณีย์"}
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider"
-                        >
-                          {/* [*** แก้ไข: เปลี่ยนหัวตาราง ***] */}
                           {isProvinceSummary ? "ชื่อสังกัด" : "ที่ทำการ"}
                         </th>
                         <th
@@ -1707,9 +1700,6 @@ const DashboardView = ({ active }: ViewProps) => {
                             key={compositeKey}
                             className="hover:bg-gray-50 transition-colors"
                           >
-                            <td className="px-6 py-4 whitespace-nowrap text-base font-semibold text-gray-900">
-                              {keyE}
-                            </td>
                             {/* [*** แก้ไข: ปิด Click ในโหมดสรุป ***] */}
                             <td
                               className={`px-6 py-4 whitespace-nowrap text-base ${officeTextClassName} ${officeBgClassName} font-semibold ${
@@ -1752,7 +1742,7 @@ const DashboardView = ({ active }: ViewProps) => {
                     <tfoot className="bg-gray-100 border-t-2 border-gray-300">
                       <tr className="font-bold">
                         <td
-                          colSpan={2}
+                          colSpan={1}
                           className="px-6 py-4 text-right text-base text-gray-800 uppercase"
                         >
                           ยอดรวม (ที่ค้นพบ)
@@ -3227,50 +3217,6 @@ const NotesReportView = ({ active }: ViewProps) => {
 };
 
 // ######################################################################
-//   [*** แก้ไข: เพิ่มแท็บใหม่ ***]
-// ######################################################################
-
-// [*** ใหม่: Component หน้า "ประสิทธิภาพการโทร" ***]
-const CallReportView = ({ active }: ViewProps) => {
-  return (
-    <div className={`${active ? "block" : "hidden"}`}>
-      <div className="min-h-screen bg-gray-100 text-gray-900 p-8">
-        <div className="mx-auto">
-          {/* --- หัวเรื่อง --- */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">
-              ประสิทธิภาพการโทร
-            </h1>
-          </div>
-
-          {/* --- เนื้อหา --- */}
-          <div className="bg-white rounded-lg shadow-xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
-            <svg
-              className="w-16 h-16 text-gray-400 mb-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.83-5.83M11.42 15.17l.02.02M11.42 15.17L6.87 20.72a2.652 2.652 0 01-3.75 0L1.5 19.17a2.652 2.652 0 010-3.75L7.25 9.67l4.17 4.17zM11.42 15.17l5.83-5.83a2.652 2.652 0 000-3.75L15.17 1.5a2.652 2.652 0 00-3.75 0L5.58 7.33l4.17 4.17 1.67-1.67z"
-              />
-            </svg>
-            <h2 className="text-2xl font-semibold text-gray-700 mb-2">
-              Under Development
-            </h2>
-            <p className="text-lg text-gray-500">Coming Soon</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ######################################################################
 //   Component หลัก (ตัวสลับหน้า)
 // ######################################################################
 export default function Home() {
@@ -3291,16 +3237,6 @@ export default function Home() {
           ประสิทธิภาพการนำจ่าย
         </button>
         {/* [*** ปุ่มใหม่ ***] */}
-        <button
-          onClick={() => setActiveView("calls")}
-          className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
-            activeView === "calls"
-              ? "bg-red-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          ประสิทธิภาพการโทร
-        </button>
         {/* [*** จบปุ่มใหม่ ***] */}
         <button
           onClick={() => setActiveView("notes")}
@@ -3315,7 +3251,6 @@ export default function Home() {
       </div>
       {/* --- ส่วนแสดงผล (สลับตาม activeView) --- */}
       <DashboardView active={activeView === "dashboard"} />
-      <CallReportView active={activeView === "calls"} />{" "}
       {/* [*** เพิ่ม View ใหม่ ***] */}
       <NotesReportView active={activeView === "notes"} />
     </div>
