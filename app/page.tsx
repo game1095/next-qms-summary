@@ -667,7 +667,7 @@ const DashboardView = ({ active }: ViewProps) => {
       if (countError) {
         throw new Error("ไม่สามารถตรวจสอบข้อมูลซ้ำได้: " + countError.message);
       }
-      if (count > 0) {
+      if ((count ?? 0) > 0) {
         alert(
           // [*** แก้ไข: Alert ***]
           `พบข้อมูลสำหรับวันที่ ${formatToFullThaiDate(
