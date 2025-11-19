@@ -2,49 +2,39 @@
 
 import { useState, useMemo, useEffect } from "react";
 import * as XLSX from "xlsx";
-// --- Import client จากไฟล์ที่เราสร้าง ---
 import { supabase } from "../lib/supabaseClient";
-
-// --- Import DatePicker ---
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-// --- Import CSS ที่เราเพิ่งสร้าง ---
 import "./datepicker.css";
-
-// [Import Chart.js]
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 
-// ลงทะเบียน components ที่จำเป็นสำหรับ Pie Chart
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
 // ######################################################################
 //   [Types และ Interfaces]
 // ######################################################################
 
-// ข้อมูลดิบจากตาราง delivery_data
 interface DeliveryDataRow {
   id?: number;
   report_date: string;
   file_key: string;
-  cole: string; // Postal code
-  colf: string; // Office name
-  cold: string; // Service type
-  colg: string; // COD status
+  cole: string;
+  colf: string;
+  cold: string;
+  colg: string;
   valueh: number;
   valuei: number;
   valuek: number;
   valuem: number;
   valueo: number;
-  // [*** รองรับคอลัมน์ Q, R, S, T ***]
   colq: number;
   colr: number;
   cols: number;
   colt: number;
 }
 
-// ข้อมูลดิบจากตาราง delivery_notes
 interface DeliveryNoteRow {
   id?: number;
   report_date: string;
@@ -54,19 +44,16 @@ interface DeliveryNoteRow {
   notes_data: { [key: string]: string };
 }
 
-// ผลรวมในตาราง Dashboard
 interface AggregatedSums {
   sumH: number;
   sumI: number;
   sumK: number;
   sumM: number;
   sumO: number;
-  // [*** ผลรวมการโทร ***]
   sumQ: number;
   sumS: number;
 }
 
-// ข้อมูลสำหรับตารางในหน้า "รายงานหมายเหตุ"
 interface ReportTableRow {
   postal_code: string;
   office_name: string;
@@ -77,19 +64,16 @@ interface ReportTableRow {
   notes_data_aggregated: { [key: string]: number };
 }
 
-// ข้อมูลสำหรับ Modal "ดูรายละเอียด" ในหน้า "รายงานหมายเหตุ"
 interface ModalDetailData {
   office_name: string;
   total_notes: number;
   notes_data: { [key: string]: number };
 }
 
-// Props สำหรับ Views
 interface ViewProps {
   active: boolean;
 }
 
-// Type สำหรับ Pie Chart
 interface NotesSummary {
   data: { [key: string]: number };
   total: number;
@@ -100,9 +84,6 @@ interface PieChartProps {
   reasonMap: Map<string, string>;
 }
 
-// ######################################################################
-
-// --- รายการหมายเหตุ ---
 const REPORT_REASONS = [
   { key: "0", label: "ออกใบแจ้ง" },
   { key: "1", label: "จ่าหน้าไม่ชัดเจน" },
@@ -134,11 +115,10 @@ const initialReportFormData = REPORT_REASONS.reduce((acc, reason) => {
   return acc;
 }, {} as { [key: string]: string });
 
-// กำหนด Key ของไฟล์ทั้ง 5
 const FILE_KEYS = ["E(E)", "E(J)", "E(W)", "E-BCOD", "E-RCOD"];
 
 // ######################################################################
-//   ข้อมูล Filter สังกัด (Global)
+//   [Filter Definitions]
 // ######################################################################
 const nakhonSawanCodes = [
   "60000",
@@ -300,7 +280,6 @@ const filterDisplayNames: { [key: string]: string } = {
   "sp-nakhon-sawan": "ศป.นครสวรรค์",
   "sp-phitsanulok": "ศป.พิษณุโลก",
 };
-// ######################################################################
 
 const getCodStatus = (code: string | number) => {
   const c = String(code).toUpperCase();
@@ -347,9 +326,6 @@ const formatToFullThaiDate = (date: Date | string | null) => {
   return `${day} ${monthName} ${yearBE}`;
 };
 
-// ######################################################################
-//   Component สำหรับ Pie Chart
-// ######################################################################
 const CHART_COLORS = [
   "#DC2626",
   "#EA580C",
@@ -392,17 +368,24 @@ const NotesPieChart = ({ notesSummary, reasonMap }: PieChartProps) => {
         data: chartDataEntries.map((item) => item.value),
         backgroundColor: CHART_COLORS.slice(0, chartDataEntries.length),
         borderColor: "#ffffff",
-        borderWidth: 1,
+        borderWidth: 2,
       },
     ],
   };
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: { position: "top" as const },
+      legend: {
+        position: "right" as const,
+        labels: { boxWidth: 12, font: { size: 11 } },
+      },
       title: { display: false },
       tooltip: {
+        backgroundColor: "rgba(17, 24, 39, 0.9)",
+        padding: 12,
+        cornerRadius: 8,
         callbacks: {
           label: function (context: any) {
             const label = context.label || "";
@@ -416,13 +399,7 @@ const NotesPieChart = ({ notesSummary, reasonMap }: PieChartProps) => {
         },
       },
       datalabels: {
-        formatter: (value: number, context: any) => {
-          const percentage = (value / (notesSummary.total || 1)) * 100;
-          if (percentage < 5) return null;
-          return percentage.toFixed(1) + "%";
-        },
-        color: "#ffffff",
-        font: { weight: "bold" as const, size: 12 },
+        display: false,
       },
     },
   };
@@ -431,13 +408,142 @@ const NotesPieChart = ({ notesSummary, reasonMap }: PieChartProps) => {
 };
 
 // ######################################################################
-//   Component สำหรับหน้า Dashboard
+//   UI Components
+// ######################################################################
+
+const FilterButton = ({ active, onClick, children }: any) => (
+  <button
+    onClick={onClick}
+    className={`py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 border ${
+      active
+        ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-200"
+        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+    }`}
+  >
+    {children}
+  </button>
+);
+
+// --- New Modern KPI Card ---
+const KPICard = ({
+  title,
+  value,
+  subValue,
+  type = "neutral",
+  icon,
+  highlight = false,
+}: any) => {
+  const styles: any = {
+    success: {
+      bg: "bg-emerald-50",
+      text: "text-emerald-700",
+      iconBg: "bg-emerald-100",
+      iconText: "text-emerald-600",
+    },
+    danger: {
+      bg: "bg-rose-50",
+      text: "text-rose-700",
+      iconBg: "bg-rose-100",
+      iconText: "text-rose-600",
+    },
+    primary: {
+      bg: "bg-blue-50",
+      text: "text-blue-700",
+      iconBg: "bg-blue-100",
+      iconText: "text-blue-600",
+    },
+    warning: {
+      bg: "bg-orange-50",
+      text: "text-orange-700",
+      iconBg: "bg-orange-100",
+      iconText: "text-orange-600",
+    },
+    neutral: {
+      bg: "bg-gray-50",
+      text: "text-gray-700",
+      iconBg: "bg-gray-100",
+      iconText: "text-gray-500",
+    },
+  };
+
+  const activeStyle = styles[type] || styles.neutral;
+
+  if (highlight) {
+    // Gradient Card for "Highlighted" KPIs
+    const gradientClass =
+      type === "success"
+        ? "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-200"
+        : type === "danger"
+        ? "bg-gradient-to-br from-rose-500 to-red-600 shadow-lg shadow-rose-200"
+        : "bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-200";
+
+    return (
+      <div
+        className={`${gradientClass} rounded-2xl p-6 text-white relative overflow-hidden group hover:-translate-y-1 transition-all duration-300`}
+      >
+        <div className="relative z-10">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider opacity-90 mb-1">
+                {title}
+              </h3>
+              <p className="text-4xl font-bold tracking-tight">{value}</p>
+              {subValue && (
+                <p className="text-sm mt-1 opacity-90 font-medium">
+                  {subValue}
+                </p>
+              )}
+            </div>
+            {icon && (
+              <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                {icon}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+      </div>
+    );
+  }
+
+  // Standard Card
+  return (
+    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-between group">
+      <div>
+        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+          {title}
+        </h3>
+        <div className="flex items-baseline gap-2">
+          <p
+            className={`text-3xl font-bold tracking-tight ${activeStyle.text}`}
+          >
+            {value}
+          </p>
+          {subValue && (
+            <span className="text-sm text-gray-400 font-medium">
+              {subValue}
+            </span>
+          )}
+        </div>
+      </div>
+      {icon && (
+        <div
+          className={`w-12 h-12 rounded-xl flex items-center justify-center ${activeStyle.iconBg} ${activeStyle.iconText} group-hover:scale-110 transition-transform`}
+        >
+          {icon}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ######################################################################
+//   Dashboard View
 // ######################################################################
 
 const DashboardView = ({ active }: ViewProps) => {
   const [supabaseData, setSupabaseData] = useState<DeliveryDataRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadFilesData, setUploadFilesData] = useState<{
@@ -447,24 +553,20 @@ const DashboardView = ({ active }: ViewProps) => {
     [key: string]: string;
   }>({});
   const [uploadDate, setUploadDate] = useState<Date | null>(null);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalData, setModalData] = useState({
     title: "",
     details: [] as any[],
     summary: { H: 0, M: 0, O: 0 },
   });
-
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportDate, setReportDate] = useState<Date | null>(null);
   const [reportFormData, setReportFormData] = useState(initialReportFormData);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
-
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedServiceFilter, setSelectedServiceFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isControlsOpen, setIsControlsOpen] = useState(true);
-
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
 
@@ -501,7 +603,6 @@ const DashboardView = ({ active }: ViewProps) => {
     }
     const isoStartDate = formatDateToISO(start);
     const isoEndDate = formatDateToISO(end);
-    console.log(`Fetching data from ${isoStartDate} to ${isoEndDate}`);
 
     const { data, error } = await supabase
       .from("delivery_data")
@@ -524,7 +625,6 @@ const DashboardView = ({ active }: ViewProps) => {
     }
   }, [startDate, endDate, active]);
 
-  // [*** Update: อ่านข้อมูลจากไฟล์ Excel เพิ่มคอลัมน์ Q, R, S, T ***]
   const handleUploadFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     fileKey: string
@@ -563,11 +663,10 @@ const DashboardView = ({ active }: ViewProps) => {
             valueK: row[10],
             valueM: row[12],
             valueO: row[14],
-            // [*** อ่านค่า Q, R, S, T ***]
-            valQ: row[16], // Q
-            valR: row[17], // R
-            valS: row[18], // S
-            valT: row[19], // T
+            valQ: row[16],
+            valR: row[17],
+            valS: row[18],
+            valT: row[19],
           };
         })
         .filter(
@@ -584,20 +683,11 @@ const DashboardView = ({ active }: ViewProps) => {
     reader.readAsArrayBuffer(file);
   };
 
-  // [*** Update: บันทึกข้อมูลลงคอลัมน์ colq...colt ***]
   const handleSubmitUpload = async () => {
     const fileKeys = Object.keys(uploadFilesData);
     if (fileKeys.length === 0) {
       alert("กรุณาอัปโหลดไฟล์อย่างน้อย 1 ไฟล์");
       return;
-    }
-    if (fileKeys.length < FILE_KEYS.length) {
-      if (
-        !window.confirm(
-          `คุณอัปโหลดเพียง ${fileKeys.length} ไฟล์ (จาก ${FILE_KEYS.length} ไฟล์) ข้อมูลอาจไม่สมบูรณ์ ยืนยันที่จะอัปโหลดหรือไม่?`
-        )
-      )
-        return;
     }
 
     setIsUploading(true);
@@ -609,7 +699,6 @@ const DashboardView = ({ active }: ViewProps) => {
         .from("delivery_data")
         .select("id", { count: "exact", head: true })
         .eq("report_date", reportDate);
-
       if (countError)
         throw new Error("ไม่สามารถตรวจสอบข้อมูลซ้ำได้: " + countError.message);
       if ((count ?? 0) > 0) {
@@ -637,7 +726,6 @@ const DashboardView = ({ active }: ViewProps) => {
             valuek: parseFloat(item.valueK) || 0,
             valuem: parseFloat(item.valueM) || 0,
             valueo: parseFloat(item.valueO) || 0,
-            // [*** บันทึกลง colq...colt ***]
             colq: parseFloat(item.valQ) || 0,
             colr: parseFloat(item.valR) || 0,
             cols: parseFloat(item.valS) || 0,
@@ -671,11 +759,8 @@ const DashboardView = ({ active }: ViewProps) => {
     }
   };
 
-  // [*** Update: Logic รวมข้อมูล (เพิ่ม Q, S) ***]
   const aggregatedData = useMemo((): [string, AggregatedSums][] => {
     const summary = new Map<string, AggregatedSums>();
-
-    // Helper function
     const isServiceMatch = (fileKey: string, filter: string) => {
       if (filter === "all") return true;
       if (filter === "GROUP_EJW")
@@ -684,25 +769,13 @@ const DashboardView = ({ active }: ViewProps) => {
       return fileKey === filter;
     };
 
-    // Logic สำหรับ 'province-summary'
     if (selectedFilter === "province-summary") {
       supabaseData.forEach((item: DeliveryDataRow) => {
         if (!isServiceMatch(item.file_key, selectedServiceFilter)) return;
         const provinceKey = getProvinceKey(item.cole);
         if (provinceKey === "other") return;
-
         const provinceName = filterDisplayNames[provinceKey] || "ไม่ระบุ";
         const compositeKey = `${provinceKey}||${provinceName}`;
-
-        const valueH = item.valueh || 0;
-        const valueI = item.valuei || 0;
-        const valueK = item.valuek || 0;
-        const valueM = item.valuem || 0;
-        const valueO = item.valueo || 0;
-        // [*** ดึงค่า Q, S ***]
-        const valueQ = item.colq || 0;
-        const valueS = item.cols || 0;
-
         const currentSums = summary.get(compositeKey) || {
           sumH: 0,
           sumI: 0,
@@ -713,19 +786,18 @@ const DashboardView = ({ active }: ViewProps) => {
           sumS: 0,
         };
         summary.set(compositeKey, {
-          sumH: currentSums.sumH + valueH,
-          sumI: currentSums.sumI + valueI,
-          sumK: currentSums.sumK + valueK,
-          sumM: currentSums.sumM + valueM,
-          sumO: currentSums.sumO + valueO,
-          sumQ: currentSums.sumQ + valueQ,
-          sumS: currentSums.sumS + valueS,
+          sumH: currentSums.sumH + (item.valueh || 0),
+          sumI: currentSums.sumI + (item.valuei || 0),
+          sumK: currentSums.sumK + (item.valuek || 0),
+          sumM: currentSums.sumM + (item.valuem || 0),
+          sumO: currentSums.sumO + (item.valueo || 0),
+          sumQ: currentSums.sumQ + (item.colq || 0),
+          sumS: currentSums.sumS + (item.cols || 0),
         });
       });
       return Array.from(summary.entries());
     }
 
-    // Logic สำหรับ Filter ปกติ
     let filterSet: Set<string> | null = null;
     if (selectedFilter === "nakhon-sawan") filterSet = nakhonSawanSet;
     else if (selectedFilter === "uthai-thani") filterSet = uthaiThaniSet;
@@ -744,16 +816,6 @@ const DashboardView = ({ active }: ViewProps) => {
         const keyE = String(item.cole);
         const keyF = String(item.colf);
         const compositeKey = `${keyE}||${keyF}`;
-
-        const valueH = item.valueh || 0;
-        const valueI = item.valuei || 0;
-        const valueK = item.valuek || 0;
-        const valueM = item.valuem || 0;
-        const valueO = item.valueo || 0;
-        // [*** ดึงค่า Q, S ***]
-        const valueQ = item.colq || 0;
-        const valueS = item.cols || 0;
-
         const currentSums = summary.get(compositeKey) || {
           sumH: 0,
           sumI: 0,
@@ -764,20 +826,19 @@ const DashboardView = ({ active }: ViewProps) => {
           sumS: 0,
         };
         summary.set(compositeKey, {
-          sumH: currentSums.sumH + valueH,
-          sumI: currentSums.sumI + valueI,
-          sumK: currentSums.sumK + valueK,
-          sumM: currentSums.sumM + valueM,
-          sumO: currentSums.sumO + valueO,
-          sumQ: currentSums.sumQ + valueQ,
-          sumS: currentSums.sumS + valueS,
+          sumH: currentSums.sumH + (item.valueh || 0),
+          sumI: currentSums.sumI + (item.valuei || 0),
+          sumK: currentSums.sumK + (item.valuek || 0),
+          sumM: currentSums.sumM + (item.valuem || 0),
+          sumO: currentSums.sumO + (item.valueo || 0),
+          sumQ: currentSums.sumQ + (item.colq || 0),
+          sumS: currentSums.sumS + (item.cols || 0),
         });
       }
     });
     return Array.from(summary.entries());
   }, [supabaseData, selectedFilter, selectedServiceFilter]);
 
-  // Logic สรุปผล
   const summaryData = useMemo(() => {
     const filteredArray = aggregatedData.filter(([compositeKey, sums]) => {
       if (searchTerm.trim() === "") return true;
@@ -798,12 +859,10 @@ const DashboardView = ({ active }: ViewProps) => {
     return filteredArray;
   }, [aggregatedData, searchTerm]);
 
-  // [*** Update: Grand Total เพิ่ม Q, S ***]
   const summaryKPIs = useMemo(() => {
     const totals = { H: 0, I: 0, K: 0, M: 0, O: 0, Q: 0, S: 0 };
-    if (!summaryData || summaryData.length === 0) {
+    if (!summaryData || summaryData.length === 0)
       return { ...totals, successRate: 0, failureRate: 0 };
-    }
     summaryData.forEach(([, sums]) => {
       totals.H += sums.sumH;
       totals.I += sums.sumI;
@@ -860,14 +919,12 @@ const DashboardView = ({ active }: ViewProps) => {
         });
       }
     });
-
     const detailsArray = Array.from(subSummaryMap.entries()).map(
       ([key, sums]) => {
         const [service, codDisplay, codRaw] = key.split("||");
         return { service, codDisplay, codRaw, ...sums };
       }
     );
-
     setModalData({
       title: title,
       details: detailsArray,
@@ -880,12 +937,10 @@ const DashboardView = ({ active }: ViewProps) => {
     setReportDate(endDate);
     setIsReportModalOpen(true);
   };
-
   const handleCloseReportModal = () => {
     setIsReportModalOpen(false);
     setReportFormData(initialReportFormData);
   };
-
   const handleReportFormChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     key: string
@@ -907,7 +962,6 @@ const DashboardView = ({ active }: ViewProps) => {
       );
       return;
     }
-
     setIsSubmittingReport(true);
     try {
       const isoDate = formatDateToISO(reportDate);
@@ -921,7 +975,6 @@ const DashboardView = ({ active }: ViewProps) => {
         .eq("report_date", isoDate)
         .eq("postal_code", postalCode)
         .maybeSingle();
-
       if (checkError)
         throw new Error("ไม่สามารถตรวจสอบข้อมูลซ้ำได้: " + checkError.message);
       if (existingReport) {
@@ -941,12 +994,10 @@ const DashboardView = ({ active }: ViewProps) => {
         notes_data: reportFormData,
         total_notes: reportTotalSum,
       };
-
       const { error: insertError } = await supabase
         .from("delivery_notes")
         .insert(dataToInsert);
       if (insertError) throw insertError;
-
       alert(`บันทึกข้อมูลหมายเหตุสำเร็จ!`);
       handleCloseReportModal();
     } catch (error) {
@@ -960,860 +1011,779 @@ const DashboardView = ({ active }: ViewProps) => {
   const isProvinceSummary = selectedFilter === "province-summary";
 
   return (
-    <div className={`${active ? "block" : "hidden"}`}>
-      <div className="min-h-screen bg-gray-100 text-gray-900 p-8">
-        <div className="mx-auto">
-          <div className="mb-4 flex justify-end">
-            <button
-              onClick={() => setIsControlsOpen(!isControlsOpen)}
-              className="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors flex items-center"
-            >
-              {isControlsOpen ? "ซ่อน" : "แสดง"} ตั้งค่า
-            </button>
+    <div className={`${active ? "block" : "hidden"} space-y-8 pb-20`}>
+      {/* Header Section */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold text-gray-900 leading-tight">
+              รายงานประสิทธิภาพการนำจ่าย และ การโทรนัดหมายนำจ่าย EMS
+              ในประเทศของที่ทำการในสังกัด {filterDisplayNames[selectedFilter]}
+            </h2>
+            <p className="text-lg text-gray-600 font-medium">
+              {formatDateToISO(startDate) === formatDateToISO(endDate)
+                ? `ประจำวันที่ ${formatToFullThaiDate(startDate)}`
+                : `ประจำวันที่ ${formatToFullThaiDate(
+                    startDate
+                  )} ถึง ${formatToFullThaiDate(endDate)}`}
+            </p>
           </div>
+          <button
+            onClick={() => setIsControlsOpen(!isControlsOpen)}
+            className="text-gray-500 hover:text-gray-700 text-sm font-medium underline whitespace-nowrap ml-4"
+          >
+            {isControlsOpen ? "ซ่อนตัวกรอง" : "แสดงตัวกรอง"}
+          </button>
+        </div>
 
-          {isControlsOpen && (
-            <>
-              <div className="mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">
-                  รายงานประสิทธิภาพการนำจ่าย และ การโทรนัดหมายนำจ่าย EMS
-                  ในประเทศ
-                </h1>
-                <p className="text-lg text-gray-500 mt-1 flex items-center">
-                  Made with ❤️ by Megamind
-                </p>
-              </div>
-
-              <div className="mb-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                  <div className="bg-white p-6 rounded-lg shadow-sm lg:col-span-2">
-                    <h3 className="text-lg font-semibold text-gray-700 mb-1">
-                      🗓️ เลือกข้อมูล
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          วันที่เริ่มต้น
-                        </label>
-                        <DatePicker
-                          selected={startDate}
-                          onChange={(date: Date | null) => setStartDate(date)}
-                          selectsStart
-                          startDate={startDate}
-                          endDate={endDate}
-                          dateFormat="dd/MM/yyyy"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          วันที่สิ้นสุด
-                        </label>
-                        <DatePicker
-                          selected={endDate}
-                          onChange={(date: Date | null) => setEndDate(date)}
-                          selectsEnd
-                          startDate={startDate}
-                          endDate={endDate}
-                          minDate={startDate || undefined}
-                          dateFormat="dd/MM/yyyy"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="w-full">
-                      <input
-                        type="text"
-                        placeholder="ค้นหา (รหัสไปรษณีย์ / ที่ทำการ)..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base py-2.5 pl-3 pr-3"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col">
-                    <h3 className="text-lg font-semibold text-gray-700 mb-1">
-                      ☁️ อัปโหลดข้อมูล
-                    </h3>
-                    <button
-                      onClick={() => setIsUploadModalOpen(true)}
-                      className="py-2.5 px-4 rounded-lg font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center shadow-md hover:shadow-lg w-full mt-4"
-                    >
-                      อัปโหลดข้อมูลใหม่
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-4">
-                    🏢 กรองตามสังกัด
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setSelectedFilter("all")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
-                        selectedFilter === "all"
-                          ? "bg-red-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {filterDisplayNames["all"]}
-                    </button>
-                    <button
-                      onClick={() => setSelectedFilter("province-summary")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
-                        selectedFilter === "province-summary"
-                          ? "bg-red-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {filterDisplayNames["province-summary"]}
-                    </button>
-                    {[
-                      "nakhon-sawan",
-                      "uthai-thani",
-                      "kamphaeng-phet",
-                      "tak",
-                      "sukhothai",
-                      "phitsanulok",
-                      "phichit",
-                      "phetchabun",
-                      "sp-nakhon-sawan",
-                      "sp-phitsanulok",
-                    ].map((filter) => (
-                      <button
-                        key={filter}
-                        onClick={() => setSelectedFilter(filter)}
-                        className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
-                          selectedFilter === filter
-                            ? "bg-red-600 text-white"
-                            : "bg-gray-100 hover:bg-gray-200"
-                        }`}
-                      >
-                        {filterDisplayNames[filter]}
-                      </button>
-                    ))}
-                  </div>
-
-                  <hr className="my-6 border-gray-200" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-4">
-                    ⚙️ กรองตามประเภทบริการ
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setSelectedServiceFilter("all")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
-                        selectedServiceFilter === "all"
-                          ? "bg-red-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      ทุกบริการ
-                    </button>
-                    <button
-                      onClick={() => setSelectedServiceFilter("GROUP_EJW")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
-                        selectedServiceFilter === "GROUP_EJW"
-                          ? "bg-red-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      รวมบริการ EMS (ยกเว้น COD)
-                    </button>
-                    <button
-                      onClick={() => setSelectedServiceFilter("GROUP_COD")}
-                      className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
-                        selectedServiceFilter === "GROUP_COD"
-                          ? "bg-red-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      รวม COD
-                    </button>
-                    {FILE_KEYS.map((serviceKey) => (
-                      <button
-                        key={serviceKey}
-                        onClick={() => setSelectedServiceFilter(serviceKey)}
-                        className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
-                          selectedServiceFilter === serviceKey
-                            ? "bg-red-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        {serviceKey}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {isLoading && (
-            <div className="mb-8 bg-white p-12 rounded-lg shadow-sm text-center">
-              กำลังดึงข้อมูล...
-            </div>
-          )}
-
-          {!isLoading && summaryData.length > 0 && (
-            <div className="bg-white rounded-lg shadow-xl overflow-hidden mb-8">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2 text-center pt-8 px-8">
-                รายงานประสิทธิภาพการนำจ่าย และ การโทรนัดหมายนำจ่าย EMS
-                ในประเทศของที่ทำการในสังกัด {filterDisplayNames[selectedFilter]}
-              </h2>
-              <p className="text-2xl text-gray-600 text-center mb-6">
-                {formatDateToISO(startDate) === formatDateToISO(endDate)
-                  ? `ประจำวันที่ ${formatToFullThaiDate(startDate)}`
-                  : `ประจำวันที่ ${formatToFullThaiDate(
-                      startDate
-                    )} ถึง ${formatToFullThaiDate(endDate)}`}
-              </p>
-
-              {/* [*** Section 1: ประสิทธิภาพการนำจ่าย ***] */}
-              <h3 className="text-xl font-bold text-gray-700 mb-4 px-8 pt-4">
-                1. ประสิทธิภาพการนำจ่าย
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-5 px-8 pb-8">
-                <div className="bg-white p-6 rounded-lg shadow-2xl flex flex-col justify-center items-center hover:-translate-y-1 transition-all">
-                  <h3 className="text-base font-medium text-gray-500 uppercase">
-                    อัตราความสำเร็จ (M / H)
-                  </h3>
-                  <p className="text-5xl font-bold text-green-600 mt-2">
-                    {summaryKPIs.successRate.toFixed(1)}%
-                  </p>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-2xl hover:-translate-y-1 transition-all">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">
-                    สำเร็จ (M)
-                  </h3>
-                  <p className="text-4xl font-bold text-green-600 mt-2">
-                    {summaryKPIs.M.toLocaleString()}
-                  </p>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-2xl hover:-translate-y-1 transition-all">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">
-                    ไม่สำเร็จ (O)
-                  </h3>
-                  <p className="text-4xl font-bold text-red-600 mt-2">
-                    {summaryKPIs.O.toLocaleString()}
-                  </p>
-                </div>
-
-                <div className="bg-white p-4 rounded-lg shadow-2xl hover:-translate-y-1 transition-all">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    เตรียมการนำจ่าย (H)
-                  </h3>
-                  <p className="text-2xl font-semibold text-blue-600 mt-1">
-                    {summaryKPIs.H.toLocaleString()}
-                  </p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow-2xl hover:-translate-y-1 transition-all">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    รายงานผล (K)
-                  </h3>
-                  <p className="text-2xl font-semibold text-blue-600 mt-1">
-                    {summaryKPIs.K.toLocaleString()}
-                  </p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow-2xl hover:-translate-y-1 transition-all">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    ไม่รายงานผล (I)
-                  </h3>
-                  <p className="text-2xl font-semibold text-red-600 mt-1">
-                    {summaryKPIs.I.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              {/* [*** Section 2: ประสิทธิภาพการโทร ***] */}
-              <h3 className="text-xl font-bold text-gray-700 mb-4 px-8 pt-4">
-                2. ประสิทธิภาพการโทร
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 px-8 pb-8">
-                {/* Card 1: โทรสำเร็จ (ชิ้น) - เขียว */}
-                <div className="bg-white p-6 rounded-lg shadow-2xl hover:-translate-y-1 transition-all">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">
-                    โทรสำเร็จ (ชิ้น)
-                  </h3>
-                  <p className="text-4xl font-bold text-green-600 mt-2">
-                    {(summaryKPIs.Q || 0).toLocaleString()}
-                  </p>
-                </div>
-
-                {/* Card 2: โทรสำเร็จ (%) - เขียว */}
-                <div className="bg-white p-6 rounded-lg shadow-2xl hover:-translate-y-1 transition-all flex flex-col justify-center items-center">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">
-                    โทรสำเร็จ (%)
-                  </h3>
-                  <p className="text-5xl font-bold text-green-600 mt-2">
-                    {(summaryKPIs.H > 0
-                      ? (summaryKPIs.Q / summaryKPIs.H) * 100
-                      : 0
-                    ).toFixed(1)}
-                    %
-                  </p>
-                </div>
-
-                {/* Card 3: โทรไม่สำเร็จ (ชิ้น) - แดง */}
-                <div className="bg-white p-6 rounded-lg shadow-2xl hover:-translate-y-1 transition-all">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">
-                    โทรไม่สำเร็จ (ชิ้น)
-                  </h3>
-                  <p className="text-4xl font-bold text-red-600 mt-2">
-                    {(summaryKPIs.S || 0).toLocaleString()}
-                  </p>
-                </div>
-
-                {/* Card 4: โทรไม่สำเร็จ (%) - แดง */}
-                <div className="bg-white p-6 rounded-lg shadow-2xl hover:-translate-y-1 transition-all flex flex-col justify-center items-center">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">
-                    โทรไม่สำเร็จ (%)
-                  </h3>
-                  <p className="text-5xl font-bold text-red-600 mt-2">
-                    {(summaryKPIs.H > 0
-                      ? (summaryKPIs.S / summaryKPIs.H) * 100
-                      : 0
-                    ).toFixed(1)}
-                    %
-                  </p>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        {isProvinceSummary ? "ชื่อสังกัด" : "ที่ทำการ"}
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        เตรียมการนำจ่าย
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        ไม่รายงานผล
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        รายงานผล
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        สำเร็จ
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        % สำเร็จ (M/H)
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        ไม่สำเร็จ
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        % ไม่สำเร็จ (O/H)
-                      </th>
-                      {/* [*** คอลัมน์การโทร: ปรับ Header เป็นสีมาตรฐาน ***] */}
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        โทรสำเร็จ (ชิ้น)
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        โทรสำเร็จ (%)
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        โทรไม่สำเร็จ (ชิ้น)
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                        โทรไม่สำเร็จ (%)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {summaryData.map(([compositeKey, sums]) => {
-                      const [keyE, keyF] = compositeKey.split("||");
-                      const rowSuccessRate =
-                        sums.sumH > 0 ? (sums.sumM / sums.sumH) * 100 : 0;
-                      const rowFailureRate =
-                        sums.sumH > 0 ? (sums.sumO / sums.sumH) * 100 : 0;
-                      // [*** Calc Call Rates ***]
-                      const callSuccessRate =
-                        sums.sumH > 0 ? (sums.sumQ / sums.sumH) * 100 : 0;
-                      const callFailRate =
-                        sums.sumH > 0 ? (sums.sumS / sums.sumH) * 100 : 0;
-
-                      let bgClass =
-                        rowSuccessRate >= 99
-                          ? "bg-green-200"
-                          : rowSuccessRate >= 95
-                          ? "bg-orange-200"
-                          : "bg-red-200";
-
-                      // [*** Logic สีตัวอักษรการโทร ***]
-                      // < 50% -> แดงหนา, >= 50% -> เขียวหนา
-                      const callRateColorClass =
-                        callSuccessRate < 50
-                          ? "text-red-600 font-bold"
-                          : "text-green-600 font-bold";
-
-                      return (
-                        <tr
-                          key={compositeKey}
-                          className="hover:bg-gray-50 transition-colors"
-                        >
-                          <td
-                            className={`px-6 py-4 whitespace-nowrap text-base text-gray-900 font-semibold ${bgClass} ${
-                              !isProvinceSummary &&
-                              "cursor-pointer hover:underline"
-                            }`}
-                            onClick={
-                              !isProvinceSummary
-                                ? () => handleShowDetails(compositeKey)
-                                : undefined
-                            }
-                          >
-                            {keyF}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {sums.sumH.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {sums.sumI.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {sums.sumK.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {sums.sumM.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {rowSuccessRate.toFixed(1)}%
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {sums.sumO.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {rowFailureRate.toFixed(1)}%
-                          </td>
-
-                          {/* [*** Call Columns: ปรับให้จำนวนเป็นตัวปกติ (ไม่หนา) ***] */}
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {(sums.sumQ || 0).toLocaleString()}
-                          </td>
-                          <td
-                            className={`px-6 py-4 whitespace-nowrap text-base ${callRateColorClass}`}
-                          >
-                            {callSuccessRate.toFixed(1)}%
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {(sums.sumS || 0).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {callFailRate.toFixed(1)}%
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot className="bg-gray-100 border-t-2 border-gray-300">
-                    <tr className="font-bold">
-                      <td className="px-6 py-4 text-right text-base text-gray-800 uppercase">
-                        ยอดรวม
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
-                        {summaryKPIs.H.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
-                        {summaryKPIs.I.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
-                        {summaryKPIs.K.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
-                        {summaryKPIs.M.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
-                        {summaryKPIs.successRate.toFixed(1)}%
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
-                        {summaryKPIs.O.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
-                        {summaryKPIs.failureRate.toFixed(1)}%
-                      </td>
-
-                      {/* [*** Footer Call Columns: ปรับสีตาม Logic เดียวกัน ***] */}
-                      {(() => {
-                        const footerCallSuccessRate =
-                          summaryKPIs.H > 0
-                            ? (summaryKPIs.Q / summaryKPIs.H) * 100
-                            : 0;
-                        const footerCallFailRate =
-                          summaryKPIs.H > 0
-                            ? (summaryKPIs.S / summaryKPIs.H) * 100
-                            : 0;
-                        const footerColorClass =
-                          footerCallSuccessRate < 50
-                            ? "text-red-600"
-                            : "text-green-600";
-
-                        return (
-                          <>
-                            <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
-                              {(summaryKPIs.Q || 0).toLocaleString()}
-                            </td>
-                            <td
-                              className={`px-6 py-4 whitespace-nowrap text-base font-bold ${footerColorClass}`}
-                            >
-                              {footerCallSuccessRate.toFixed(1)}%
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
-                              {(summaryKPIs.S || 0).toLocaleString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">
-                              {footerCallFailRate.toFixed(1)}%
-                            </td>
-                          </>
-                        );
-                      })()}
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* --- Modal Upload --- */}
-          {isUploadModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/75 backdrop-blur-sm">
-              <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    อัปโหลดข้อมูลใหม่
-                  </h3>
-                  <button
-                    onClick={() => setIsUploadModalOpen(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                    disabled={isUploading}
-                  >
-                    <svg
-                      className="w-6 h-6"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M6 18L18 6M6 6l12 12"
-                      ></path>
-                    </svg>
-                  </button>
-                </div>
-                <div className="p-6 overflow-y-auto">
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-700 mb-3">
-                      เลือกวันที่
-                    </h3>
+        {/* Control Panel */}
+        {isControlsOpen && (
+          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-1 space-y-4">
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  ช่วงเวลาข้อมูล
+                </label>
+                <div className="flex gap-2">
+                  <div className="w-1/2">
                     <DatePicker
-                      selected={uploadDate}
-                      onChange={(date: Date | null) => setUploadDate(date)}
+                      selected={startDate}
+                      onChange={(date: Date | null) => setStartDate(date)}
+                      selectsStart
+                      startDate={startDate}
+                      endDate={endDate}
                       dateFormat="dd/MM/yyyy"
-                      className="mt-1"
-                      disabled={isUploading}
+                      className="w-full rounded-lg border-gray-300 text-sm focus:ring-red-500 focus:border-red-500"
                     />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-3">
-                      อัปโหลดไฟล์ (Excel)
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {FILE_KEYS.map((key) => (
-                        <div
-                          key={key}
-                          className="bg-gray-50 p-4 rounded-lg border"
-                        >
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {key}
-                          </label>
-                          <input
-                            type="file"
-                            accept=".xlsx, .xls"
-                            onChange={(e) => handleUploadFileChange(e, key)}
-                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer"
-                            disabled={isUploading}
-                          />
-                          {uploadFileNames[key] && (
-                            <p className="text-xs text-green-600 mt-2 truncate">
-                              {uploadFileNames[key]}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                  <div className="w-1/2">
+                    <DatePicker
+                      selected={endDate}
+                      onChange={(date: Date | null) => setEndDate(date)}
+                      selectsEnd
+                      startDate={startDate}
+                      endDate={endDate}
+                      minDate={startDate || undefined}
+                      dateFormat="dd/MM/yyyy"
+                      className="w-full rounded-lg border-gray-300 text-sm focus:ring-red-500 focus:border-red-500"
+                    />
                   </div>
                 </div>
-                <div className="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
+                <button
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="w-full mt-2 py-2 px-4 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-medium transition-colors border border-blue-200 dashed"
+                >
+                  + อัปโหลดไฟล์ Excel
+                </button>
+              </div>
+
+              <div className="lg:col-span-3 space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    สังกัด และ พื้นที่
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ค้นหาที่ทำการ / รหัสไปรษณีย์..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="rounded-lg border-gray-200 bg-gray-50 text-sm focus:ring-red-500 focus:border-red-500 w-full md:w-64"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {Object.keys(filterDisplayNames).map((filterKey) => (
+                    <FilterButton
+                      key={filterKey}
+                      active={selectedFilter === filterKey}
+                      onClick={() => setSelectedFilter(filterKey)}
+                    >
+                      {filterDisplayNames[filterKey]}
+                    </FilterButton>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 pt-4">
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                ประเภทบริการ
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {["all", "GROUP_EJW", "GROUP_COD", ...FILE_KEYS].map((key) => (
                   <button
-                    onClick={() => setIsUploadModalOpen(false)}
-                    className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg mr-3"
-                    disabled={isUploading}
-                  >
-                    ยกเลิก
-                  </button>
-                  <button
-                    onClick={handleSubmitUpload}
-                    className={`font-bold py-2 px-4 rounded-lg ${
-                      isUploading
-                        ? "bg-gray-400"
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                    key={key}
+                    onClick={() => setSelectedServiceFilter(key)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                      selectedServiceFilter === key
+                        ? "bg-gray-800 text-white border-gray-800"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
                     }`}
-                    disabled={
-                      isUploading || Object.keys(uploadFilesData).length === 0
-                    }
                   >
-                    {isUploading ? "กำลังอัปโหลด..." : "ยืนยันการอัปโหลด"}
+                    {key === "all"
+                      ? "ทุกบริการ"
+                      : key === "GROUP_EJW"
+                      ? "EMS (No COD)"
+                      : key === "GROUP_COD"
+                      ? "COD"
+                      : key}
                   </button>
-                </div>
+                ))}
               </div>
             </div>
-          )}
-
-          {/* --- Modal Details --- */}
-          {isModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/75 backdrop-blur-sm">
-              <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[80vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    {modalData.title}
-                  </h3>
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <svg
-                      className="w-6 h-6"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M6 18L18 6M6 6l12 12"
-                      ></path>
-                    </svg>
-                  </button>
-                </div>
-                <div className="p-6 overflow-y-auto">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                    รายละเอียด (แยกตาม บริการ และ COD)
-                  </h4>
-                  <p className="text-sm text-gray-500 mb-3 -mt-2">
-                    *ยอดรวมนี้เป็นยอดสรุปของช่วงวันที่ที่เลือกทั้งหมด
-                    (ไม่เกี่ยวกับฟิลเตอร์บริการ)
-                  </p>
-                  <div className="mb-4">
-                    <button
-                      onClick={handleOpenReportModal}
-                      className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors"
-                    >
-                      รายงานหมายเหตุนำจ่าย
-                    </button>
-                  </div>
-                  <table className="min-w-full divide-y divide-gray-200 border">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-sm font-bold text-gray-700 uppercase">
-                          บริการ
-                        </th>
-                        <th className="px-4 py-2 text-left text-sm font-bold text-gray-700 uppercase">
-                          COD
-                        </th>
-                        <th className="px-4 py-2 text-left text-sm font-bold text-gray-700 uppercase">
-                          เตรียมการ
-                        </th>
-                        <th className="px-4 py-2 text-left text-sm font-bold text-gray-700 uppercase">
-                          สำเร็จ
-                        </th>
-                        <th className="px-4 py-2 text-left text-sm font-bold text-gray-700 uppercase">
-                          ไม่สำเร็จ
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {modalData.details.map((detail, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-base text-gray-800">
-                            {detail.service}
-                          </td>
-                          <td className="px-4 py-3 text-base text-gray-800">
-                            {detail.codDisplay}
-                          </td>
-                          <td className="px-4 py-3 text-base text-gray-800">
-                            {detail.H.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3 text-base text-gray-800">
-                            {detail.M.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3 text-base text-gray-800">
-                            {detail.O.toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-gray-100 border-t-2">
-                      <tr className="font-bold">
-                        <td
-                          colSpan={2}
-                          className="px-4 py-3 text-right text-gray-800"
-                        >
-                          ยอดรวม:
-                        </td>
-                        <td className="px-4 py-3 text-base text-gray-900">
-                          {modalData.summary.H.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-base text-gray-900">
-                          {modalData.summary.M.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-base text-gray-900">
-                          {modalData.summary.O.toLocaleString()}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-                <div className="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"
-                  >
-                    ปิด
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* --- Modal Report Form --- */}
-          {isReportModalOpen && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm">
-              <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    บันทึกรายงานหมายเหตุนำจ่าย
-                  </h3>
-                  <button
-                    onClick={handleCloseReportModal}
-                    className="text-gray-400 hover:text-gray-600"
-                    disabled={isSubmittingReport}
-                  >
-                    <svg
-                      className="w-6 h-6"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M6 18L18 6M6 6l12 12"
-                      ></path>
-                    </svg>
-                  </button>
-                </div>
-                <div className="p-6 overflow-y-auto">
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6">
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-800">
-                        {modalData.title}
-                      </h4>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        วันที่รายงาน
-                      </label>
-                      <DatePicker
-                        selected={reportDate}
-                        onChange={(date) => setReportDate(date)}
-                        dateFormat="dd/MM/yyyy"
-                        className="mt-1"
-                        disabled
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
-                    {REPORT_REASONS.map((reason) => (
-                      <div key={reason.key}>
-                        <label className="block text-sm font-medium text-gray-700">
-                          {reason.key} - {reason.label}
-                        </label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={reportFormData[reason.key]}
-                          onChange={(e) =>
-                            handleReportFormChange(e, reason.key)
-                          }
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base py-2.5"
-                          disabled={isSubmittingReport}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex justify-between items-center p-4 border-t bg-gray-50 rounded-b-lg">
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">
-                      ยอดรวมที่กรอก:{" "}
-                      <strong
-                        className={
-                          reportTotalSum === modalData.summary.O &&
-                          reportTotalSum > 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }
-                      >
-                        {reportTotalSum.toLocaleString()}
-                      </strong>
-                    </span>
-                    <span className="text-sm text-gray-500 mx-2">/</span>
-                    <span className="text-sm font-medium text-gray-700">
-                      ยอดไม่สำเร็จ (O):{" "}
-                      <strong>{modalData.summary.O.toLocaleString()}</strong>
-                    </span>
-                  </div>
-                  <div>
-                    <button
-                      onClick={handleCloseReportModal}
-                      className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg mr-3"
-                      disabled={isSubmittingReport}
-                    >
-                      ยกเลิก
-                    </button>
-                    <button
-                      onClick={handleSubmitReport}
-                      className={`font-bold py-2 px-4 rounded-lg ${
-                        isReportSaveDisabled
-                          ? "bg-red-300 cursor-not-allowed"
-                          : "bg-red-600 hover:bg-red-700 text-white"
-                      }`}
-                      disabled={isReportSaveDisabled}
-                    >
-                      {isSubmittingReport ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* KPI Grid & Table */}
+      {!isLoading && summaryData.length > 0 && (
+        <>
+          {/* Section 1: Delivery Efficiency */}
+          <h3 className="text-lg font-bold text-gray-700 mb-4">
+            1. ประสิทธิภาพการนำจ่าย
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Big Cards */}
+            <KPICard
+              title="อัตราความสำเร็จ"
+              value={`${summaryKPIs.successRate.toFixed(1)}%`}
+              type="success"
+              highlight
+              icon={
+                <svg
+                  className="w-8 h-8 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              }
+            />
+            <KPICard
+              title="สำเร็จ (M)"
+              value={summaryKPIs.M.toLocaleString()}
+              type="success"
+              icon={
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              }
+            />
+            <KPICard
+              title="ไม่สำเร็จ (O)"
+              value={summaryKPIs.O.toLocaleString()}
+              type="danger"
+              icon={
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              }
+            />
+
+            {/* Smaller Cards */}
+            <KPICard
+              title="เตรียมการ (H)"
+              value={summaryKPIs.H.toLocaleString()}
+              type="primary"
+              icon={
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                  />
+                </svg>
+              }
+            />
+            <KPICard
+              title="รายงานผล (K)"
+              value={summaryKPIs.K.toLocaleString()}
+              type="primary"
+            />
+            <KPICard
+              title="ไม่รายงานผล (I)"
+              value={summaryKPIs.I.toLocaleString()}
+              type="warning"
+              icon={
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              }
+            />
+          </div>
+
+          {/* Section 2: Call Efficiency */}
+          <h3 className="text-lg font-bold text-gray-700 mb-4">
+            2. ประสิทธิภาพการโทร
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <KPICard
+              title="โทรสำเร็จ (%)"
+              value={`${(summaryKPIs.H > 0
+                ? (summaryKPIs.Q / summaryKPIs.H) * 100
+                : 0
+              ).toFixed(1)}%`}
+              type="success"
+              highlight
+            />
+            <KPICard
+              title="โทรสำเร็จ (ชิ้น)"
+              value={(summaryKPIs.Q || 0).toLocaleString()}
+              type="success"
+              icon={
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                  />
+                </svg>
+              }
+            />
+            <KPICard
+              title="โทรไม่สำเร็จ (%)"
+              value={`${(summaryKPIs.H > 0
+                ? (summaryKPIs.S / summaryKPIs.H) * 100
+                : 0
+              ).toFixed(1)}%`}
+              type="danger"
+              highlight
+            />
+            <KPICard
+              title="โทรไม่สำเร็จ (ชิ้น)"
+              value={(summaryKPIs.S || 0).toLocaleString()}
+              type="danger"
+              icon={
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M16 3h5m0 0v5m0-5l-6 6M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.516l2.257-1.13a1 1 0 00.502-1.21l-1.498-4.493A1 1 0 005.38 3H5z"
+                  />
+                </svg>
+              }
+            />
+          </div>
+
+          {/* Data Table */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-100">
+                <thead>
+                  <tr className="bg-gray-200 text-gray-700 uppercase text-sm leading-normal">
+                    <th
+                      rowSpan={2}
+                      className="py-3 px-6 text-left border-b border-gray-200 bg-gray-100 sticky left-0 z-20"
+                    >
+                      {isProvinceSummary ? "ชื่อสังกัด" : "ที่ทำการ"}
+                    </th>
+                    <th
+                      colSpan={7}
+                      className="py-2 text-center border-b border-gray-300 bg-blue-50 text-blue-800 font-bold border-r-4 border-gray-300"
+                    >
+                      ประสิทธิภาพการนำจ่าย
+                    </th>
+                    <th
+                      colSpan={4}
+                      className="py-2 text-center border-b border-gray-300 bg-purple-50 text-purple-800 font-bold"
+                    >
+                      ประสิทธิภาพการโทร
+                    </th>
+                  </tr>
+                  <tr className="bg-gray-50 text-gray-600 text-xs uppercase font-semibold">
+                    {/* Delivery Columns */}
+                    {[
+                      "เตรียมการ (H)",
+                      "ไม่รายงาน (I)",
+                      "รายงานผล (K)",
+                      "สำเร็จ (M)",
+                      "% สำเร็จ",
+                      "ไม่สำเร็จ (O)",
+                      "% ไม่สำเร็จ",
+                    ].map((h, i) => (
+                      <th
+                        key={h}
+                        className={`px-4 py-3 text-right border-b border-gray-200 ${
+                          i === 6 ? "border-r-4 border-gray-300" : ""
+                        }`}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                    {/* Call Columns */}
+                    {[
+                      "โทรสำเร็จ",
+                      "% โทรสำเร็จ",
+                      "โทรไม่สำเร็จ",
+                      "% โทรไม่สำเร็จ",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="px-4 py-3 text-right border-b border-gray-200"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {summaryData.map(([compositeKey, sums]) => {
+                    const [keyE, keyF] = compositeKey.split("||");
+                    const rowSuccessRate =
+                      sums.sumH > 0 ? (sums.sumM / sums.sumH) * 100 : 0;
+                    const rowFailureRate =
+                      sums.sumH > 0 ? (sums.sumO / sums.sumH) * 100 : 0;
+                    const callSuccessRate =
+                      sums.sumH > 0 ? (sums.sumQ / sums.sumH) * 100 : 0;
+                    const callFailRate =
+                      sums.sumH > 0 ? (sums.sumS / sums.sumH) * 100 : 0;
+
+                    return (
+                      <tr
+                        key={compositeKey}
+                        className="hover:bg-gray-50/80 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {isProvinceSummary ? (
+                            keyF
+                          ) : (
+                            <button
+                              onClick={() => handleShowDetails(compositeKey)}
+                              className="text-blue-600 hover:text-blue-800 hover:underline text-left"
+                            >
+                              {keyF}
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          {sums.sumH.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-right">
+                          {sums.sumI.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          {sums.sumK.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                          {sums.sumM.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex justify-end">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                rowSuccessRate >= 98
+                                  ? "bg-green-100 text-green-800"
+                                  : rowSuccessRate >= 95
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {rowSuccessRate.toFixed(1)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          {sums.sumO.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right border-r-4 border-gray-300">
+                          {rowFailureRate.toFixed(1)}%
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          {sums.sumQ.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex justify-end">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                callSuccessRate >= 50
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {callSuccessRate.toFixed(1)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          {sums.sumS.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          {callFailRate.toFixed(1)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-gray-50 border-t border-gray-200 font-bold">
+                  <tr>
+                    <td className="px-6 py-4 text-sm text-gray-900 uppercase text-right">
+                      ยอดรวม
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                      {summaryKPIs.H.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                      {summaryKPIs.I.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                      {summaryKPIs.K.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                      {summaryKPIs.M.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex justify-end">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                            summaryKPIs.successRate >= 98
+                              ? "bg-green-100 text-green-800"
+                              : summaryKPIs.successRate >= 95
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {summaryKPIs.successRate.toFixed(1)}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                      {summaryKPIs.O.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right border-r-4 border-gray-300">
+                      {summaryKPIs.failureRate.toFixed(1)}%
+                    </td>
+                    {(() => {
+                      const footerCallSuccessRate =
+                        summaryKPIs.H > 0
+                          ? (summaryKPIs.Q / summaryKPIs.H) * 100
+                          : 0;
+                      const footerCallFailRate =
+                        summaryKPIs.H > 0
+                          ? (summaryKPIs.S / summaryKPIs.H) * 100
+                          : 0;
+                      return (
+                        <>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                            {(summaryKPIs.Q || 0).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <div className="flex justify-end">
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                  footerCallSuccessRate >= 50
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {footerCallSuccessRate.toFixed(1)}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                            {(summaryKPIs.S || 0).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                            {footerCallFailRate.toFixed(1)}%
+                          </td>
+                        </>
+                      );
+                    })()}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {isLoading && (
+        <div className="py-20 text-center text-gray-400 animate-pulse">
+          กำลังประมวลผลข้อมูล...
+        </div>
+      )}
+
+      {/* Modal Components: Upload, Detail, Report Form */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-900">
+                อัปโหลดข้อมูลใหม่
+              </h3>
+              <button
+                onClick={() => setIsUploadModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  วันที่ของข้อมูล
+                </label>
+                <DatePicker
+                  selected={uploadDate}
+                  onChange={(date: Date | null) => setUploadDate(date)}
+                  dateFormat="dd/MM/yyyy"
+                  className="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {FILE_KEYS.map((key) => (
+                  <div
+                    key={key}
+                    className="border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-white transition-colors"
+                  >
+                    <label className="block text-xs font-bold text-gray-500 mb-2">
+                      {key}
+                    </label>
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={(e) => handleUploadFileChange(e, key)}
+                      className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {uploadFileNames[key] && (
+                      <p className="text-xs text-green-600 mt-2">
+                        ✓ {uploadFileNames[key]}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <button
+                onClick={() => setIsUploadModalOpen(false)}
+                className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleSubmitUpload}
+                disabled={isUploading}
+                className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 disabled:opacity-50"
+              >
+                {isUploading ? "กำลังอัปโหลด..." : "ยืนยันการอัปโหลด"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-lg font-bold text-gray-900">
+                {modalData.title}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                  รายละเอียดแยกตามประเภท
+                </h4>
+                <button
+                  onClick={handleOpenReportModal}
+                  className="text-sm bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-medium hover:bg-red-100 transition-colors border border-red-100"
+                >
+                  แจ้งสาเหตุที่ไม่สำเร็จ
+                </button>
+              </div>
+              <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">
+                      บริการ
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">
+                      COD
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">
+                      เตรียมการ
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">
+                      สำเร็จ
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">
+                      ไม่สำเร็จ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {modalData.details.map((detail, idx) => (
+                    <tr key={idx}>
+                      <td className="px-4 py-2 text-sm text-gray-900">
+                        {detail.service}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-500">
+                        {detail.codDisplay}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                        {detail.H.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-green-600 font-medium text-right">
+                        {detail.M.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-red-600 font-medium text-right">
+                        {detail.O.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-50 font-semibold">
+                  <tr>
+                    <td colSpan={2} className="px-4 py-2 text-right text-sm">
+                      รวม
+                    </td>
+                    <td className="px-4 py-2 text-right text-sm">
+                      {modalData.summary.H.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-right text-sm text-green-700">
+                      {modalData.summary.M.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-right text-sm text-red-700">
+                      {modalData.summary.O.toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-100 bg-red-50/50">
+              <h3 className="text-lg font-bold text-gray-900">
+                บันทึกรายงานหมายเหตุนำจ่าย
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">{modalData.title}</p>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {REPORT_REASONS.map((reason) => (
+                  <div key={reason.key}>
+                    <label
+                      className="block text-xs font-medium text-gray-500 mb-1 truncate"
+                      title={reason.label}
+                    >
+                      {reason.key} - {reason.label}
+                    </label>
+                    <input
+                      type="number"
+                      value={reportFormData[reason.key]}
+                      onChange={(e) => handleReportFormChange(e, reason.key)}
+                      className="w-full rounded-md border-gray-300 text-sm focus:ring-red-500 focus:border-red-500"
+                      placeholder="0"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-between items-center">
+              <div className="text-sm">
+                ยอดรวมที่กรอก:{" "}
+                <span
+                  className={`font-bold ${
+                    reportTotalSum === modalData.summary.O
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {reportTotalSum}
+                </span>{" "}
+                / {modalData.summary.O}
+              </div>
+              <div className="space-x-3">
+                <button
+                  onClick={handleCloseReportModal}
+                  className="text-gray-600 text-sm font-medium hover:text-gray-800"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={handleSubmitReport}
+                  disabled={isReportSaveDisabled}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-red-200 hover:bg-red-700 disabled:opacity-50 disabled:shadow-none transition-all"
+                >
+                  บันทึกข้อมูล
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+// ... (วางต่อท้าย DashboardView ก่อนถึง export default function Home)
 
 // ######################################################################
-//   Notes Report View (เดิม) - ปรับแก้เล็กน้อยให้ทำงานร่วมกันได้
+//   Notes Report View (Modernized)
 // ######################################################################
+
 const NotesReportView = ({ active }: ViewProps) => {
   const [allTableData, setAllTableData] = useState<ReportTableRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -2007,19 +1977,6 @@ const NotesReportView = ({ active }: ViewProps) => {
     };
   }, [allTableData]);
 
-  const topNotesKPIs = useMemo(() => {
-    if (!notesSummary || notesSummary.total === 0) return [];
-    return Object.entries(notesSummary.data)
-      .map(([key, value]) => ({
-        key,
-        value,
-        label: reasonLabelMap.get(key) || "Unknown",
-      }))
-      .filter((item) => item.value > 0)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 3);
-  }, [notesSummary]);
-
   const handleShowReportDetails = (data: ReportTableRow) => {
     setModalDetailData({
       office_name: data.office_name,
@@ -2034,366 +1991,308 @@ const NotesReportView = ({ active }: ViewProps) => {
   };
 
   return (
-    <div className={`${active ? "block" : "hidden"}`}>
-      <div className="min-h-screen bg-gray-100 text-gray-900 p-8">
-        <div className="mx-auto">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">
-              สถานะการรายงานหมายเหตุนำจ่าย
-            </h1>
-            <p className="text-lg text-gray-500 mt-1">
-              ตรวจสอบสถานะการรายงานของที่ทำการในสังกัด{" "}
-              {filterDisplayNames[selectedFilter]}
-            </p>
-          </div>
-          <div className="mb-4 flex justify-end space-x-2">
-            <button
-              onClick={() => setIsControlsOpen(!isControlsOpen)}
-              className="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md flex items-center"
-            >
-              {isControlsOpen ? "ซ่อน" : "แสดง"} ตั้งค่า
-            </button>
-          </div>
-          {isControlsOpen && (
-            <>
-              <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-                <h3 className="text-lg font-semibold text-gray-700 mb-1">
-                  🗓️ เลือกวันที่ & ค้นหา
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      เลือกวันที่
-                    </label>
-                    <DatePicker
-                      selected={selectedDate}
-                      onChange={(date) => setSelectedDate(date)}
-                      dateFormat="dd/MM/yyyy"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-                <div className="w-full mt-4">
-                  <input
-                    type="text"
-                    placeholder="ค้นหา..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base py-2.5 pl-3 pr-3"
-                  />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-                <h3 className="text-lg font-semibold text-gray-700 mb-4">
-                  🏢 กรองตามสังกัด
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setSelectedFilter("all")}
-                    className={`py-2 px-5 rounded-lg font-semibold ${
-                      selectedFilter === "all"
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-100 hover:bg-gray-200"
-                    }`}
-                  >
-                    แสดงทั้งหมด
-                  </button>
-                  {[
-                    "nakhon-sawan",
-                    "uthai-thani",
-                    "kamphaeng-phet",
-                    "tak",
-                    "sukhothai",
-                    "phitsanulok",
-                    "phichit",
-                    "phetchabun",
-                    "sp-nakhon-sawan",
-                    "sp-phitsanulok",
-                  ].map((filter) => (
-                    <button
-                      key={filter}
-                      onClick={() => setSelectedFilter(filter)}
-                      className={`py-2 px-5 rounded-lg font-semibold ${
-                        selectedFilter === filter
-                          ? "bg-red-600 text-white"
-                          : "bg-gray-100 hover:bg-gray-200"
-                      }`}
-                    >
-                      {filterDisplayNames[filter]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-          {isLoading && (
-            <div className="mb-8 bg-white p-12 text-center">
-              กำลังดึงข้อมูลหมายเหตุ...
-            </div>
-          )}
-          {!isLoading && allTableData.length === 0 && (
-            <div className="mb-8 bg-white p-6 text-center">ไม่พบข้อมูล</div>
-          )}
-          {!isLoading && allTableData.length > 0 && (
-            <div className="bg-white rounded-lg shadow-xl overflow-hidden mb-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 px-8 pt-8 pb-4">
-                <div className="bg-white p-6 rounded-lg shadow-2xl flex flex-col items-center">
-                  <h3 className="text-base font-medium text-gray-500 uppercase">
-                    อัตราการรายงาน
-                  </h3>
-                  <p className="text-5xl font-bold text-red-600 mt-2">
-                    {notesKPIs.complianceRate.toFixed(1)}%
-                  </p>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-2xl">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">
-                    รายงานแล้ว
-                  </h3>
-                  <p className="text-4xl font-bold text-green-600 mt-2">
-                    {notesKPIs.reportedOffices.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    / {notesKPIs.totalRequiredToReport.toLocaleString()}{" "}
-                    ที่ต้องรายงาน
-                  </p>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-2xl">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">
-                    ยังไม่รายงาน
-                  </h3>
-                  <p className="text-4xl font-bold text-red-600 mt-2">
-                    {notesKPIs.notReportedOffices.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    / {notesKPIs.totalRequiredToReport.toLocaleString()}{" "}
-                    ที่ต้องรายงาน
-                  </p>
-                </div>
-              </div>
-              {topNotesKPIs.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 px-8 pb-8 pt-4 border-t border-gray-100">
-                  {topNotesKPIs.map((note, index) => (
-                    <div
-                      key={note.key}
-                      className="bg-white p-4 rounded-lg shadow-2xl"
-                    >
-                      <h3 className="text-sm font-medium text-gray-500 uppercase truncate">
-                        อันดับ {index + 1}: {note.label} ({note.key})
-                      </h3>
-                      <p className="text-3xl font-bold text-gray-800 mt-2">
-                        {note.value.toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {filteredTableData.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase sticky left-0 bg-gray-100 z-10">
-                          ที่ทำการ
-                        </th>
-                        <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                          สถานะ
-                        </th>
-                        <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                          วันที่รายงาน
-                        </th>
-                        <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                          ยอดรวม
-                        </th>
-                        <th className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase">
-                          -
-                        </th>
-                        {REPORT_REASONS.map((reason) => (
-                          <th
-                            key={reason.key}
-                            className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase"
-                            title={reason.label}
-                          >
-                            {reason.key}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredTableData.map((row) => (
-                        <tr key={row.postal_code} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-base font-semibold text-gray-900 sticky left-0 bg-white hover:bg-gray-50 z-10">
-                            {row.office_name} ({row.postal_code})
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base font-semibold">
-                            {row.status === "reported" ? (
-                              <span className="text-green-600">
-                                ✅ รายงานแล้ว
-                              </span>
-                            ) : row.status === "not_reported" ? (
-                              <span className="text-red-600">
-                                ❌ ยังไม่รายงาน
-                              </span>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800">
-                            {row.is_reported
-                              ? formatToFullThaiDate(row.report_date)
-                              : "-"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-800 font-bold">
-                            {row.is_reported
-                              ? row.total_notes > 0
-                                ? row.total_notes.toLocaleString()
-                                : "-"
-                              : "-"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {row.is_reported && row.total_notes > 0 && (
-                              <button
-                                onClick={() => handleShowReportDetails(row)}
-                                className="bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-full hover:bg-red-200 text-xs"
-                              >
-                                ดู
-                              </button>
-                            )}
-                          </td>
-                          {REPORT_REASONS.map((reason) => (
-                            <td
-                              key={reason.key}
-                              className="px-6 py-4 whitespace-nowrap text-base text-gray-800"
-                            >
-                              {row.is_reported
-                                ? row.notes_data_aggregated[reason.key] > 0
-                                  ? row.notes_data_aggregated[reason.key]
-                                  : "-"
-                                : "-"}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-          {!isLoading && notesSummary.total > 0 && (
-            <div className="bg-white rounded-lg shadow-xl p-6 mt-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                สรุปหมายเหตุรวม
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                <div className="w-full max-w-md mx-auto">
-                  <NotesPieChart
-                    notesSummary={notesSummary}
-                    reasonMap={reasonLabelMap}
-                  />
-                </div>
-                <div className="w-full">
-                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                    {REPORT_REASONS.map((reason) => ({
-                      ...reason,
-                      value: notesSummary.data[reason.key] || 0,
-                      percentage:
-                        ((notesSummary.data[reason.key] || 0) /
-                          (notesSummary.total || 1)) *
-                        100,
-                    }))
-                      .filter((reason) => reason.value > 0)
-                      .sort((a, b) => b.value - a.value)
-                      .map((reason) => (
-                        <div key={reason.key}>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-medium text-gray-700 truncate">
-                              {reason.key} - {reason.label}
-                            </span>
-                            <span className="text-sm font-bold text-gray-900">
-                              {reason.value.toLocaleString()} (
-                              {reason.percentage.toFixed(1)}%)
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2.5">
-                            <div
-                              className="bg-red-600 h-2.5 rounded-full"
-                              style={{ width: `${reason.percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+    <div className={`${active ? "block" : "hidden"} space-y-8 pb-20`}>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            สถานะการรายงานหมายเหตุ
+          </h2>
+          <p className="text-gray-500 mt-1">
+            ข้อมูลวันที่ {formatToFullThaiDate(selectedDate)}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
+          <DatePicker
+            selected={selectedDate}
+            onChange={(date) => setSelectedDate(date)}
+            dateFormat="dd/MM/yyyy"
+            className="border-0 bg-transparent text-sm font-medium focus:ring-0 w-32"
+          />
         </div>
       </div>
-      {isDetailModalOpen && modalDetailData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/75 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-xl font-semibold text-gray-800">
-                รายละเอียดหมายเหตุ
-              </h3>
-              <button
-                onClick={handleCloseDetailModal}
-                className="text-gray-400 hover:text-gray-600"
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap gap-2 bg-white p-4 rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+        <FilterButton
+          active={selectedFilter === "all"}
+          onClick={() => setSelectedFilter("all")}
+        >
+          แสดงทั้งหมด
+        </FilterButton>
+        {Object.keys(filterDisplayNames)
+          .filter((k) => k !== "all" && k !== "province-summary")
+          .map((k) => (
+            <FilterButton
+              key={k}
+              active={selectedFilter === k}
+              onClick={() => setSelectedFilter(k)}
+            >
+              {filterDisplayNames[k]}
+            </FilterButton>
+          ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="ค้นหาที่ทำการ..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full rounded-xl border-gray-200 pl-10 py-3 shadow-sm focus:ring-red-500 focus:border-red-500"
+        />
+        <svg
+          className="w-5 h-5 text-gray-400 absolute left-3 top-3.5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+      </div>
+
+      {/* KPI Cards */}
+      {!isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <KPICard
+            title="อัตราการรายงาน"
+            value={`${notesKPIs.complianceRate.toFixed(1)}%`}
+            type={notesKPIs.complianceRate >= 90 ? "success" : "danger"}
+            highlight
+          />
+          <KPICard
+            title="รายงานแล้ว"
+            value={notesKPIs.reportedOffices.toLocaleString()}
+            subValue={`/ ${notesKPIs.totalRequiredToReport}`}
+            type="success"
+            icon={
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  ></path>
-                </svg>
-              </button>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            }
+          />
+          <KPICard
+            title="ยังไม่รายงาน"
+            value={notesKPIs.notReportedOffices.toLocaleString()}
+            type="danger"
+            icon={
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            }
+          />
+        </div>
+      )}
+
+      {/* Chart Section */}
+      {!isLoading && notesSummary.total > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 bg-white rounded-xl p-6 border border-gray-200 shadow-sm h-80">
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">
+              สัดส่วนสาเหตุ
+            </h3>
+            <div className="h-60">
+              <NotesPieChart
+                notesSummary={notesSummary}
+                reasonMap={reasonLabelMap}
+              />
             </div>
-            <div className="p-6 overflow-y-auto">
-              <h4 className="text-xl font-bold text-red-700">
-                {modalDetailData.office_name}
-              </h4>
-              <p className="text-lg text-gray-600 mb-4">
-                ข้อมูลวันที่ {formatToFullThaiDate(selectedDate)}
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-                {REPORT_REASONS.map((reason) => {
-                  const value = modalDetailData.notes_data[reason.key] || 0;
-                  if (value === 0) return null;
+          </div>
+          <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-200 shadow-sm h-80 overflow-y-auto">
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">
+              อันดับสาเหตุสูงสุด
+            </h3>
+            <div className="space-y-3">
+              {Object.entries(notesSummary.data)
+                .sort(([, a], [, b]) => b - a)
+                .filter(([, val]) => val > 0)
+                .slice(0, 10)
+                .map(([key, val], idx) => {
+                  const percent = ((val / notesSummary.total) * 100).toFixed(1);
                   return (
-                    <div
-                      key={reason.key}
-                      className="flex justify-between border-b py-2"
-                    >
-                      <span className="text-gray-700">
-                        {reason.key} - {reason.label}
-                      </span>
-                      <span className="font-bold text-gray-900">
-                        {Number(value).toLocaleString()}
-                      </span>
+                    <div key={key} className="flex items-center gap-3">
+                      <div className="w-8 text-xs text-gray-400 font-medium">
+                        #{idx + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium text-gray-700 truncate">
+                            {reasonLabelMap.get(key)} ({key})
+                          </span>
+                          <span className="text-gray-900 font-bold">
+                            {val.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-red-500 h-1.5 rounded-full"
+                            style={{ width: `${percent}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      <div className="w-12 text-right text-xs text-gray-500">
+                        {percent}%
+                      </div>
                     </div>
                   );
                 })}
-              </div>
-              <div className="mt-4 pt-4 border-t-2 border-red-200">
-                <div className="flex justify-between text-lg font-bold">
-                  <span>ยอดรวมทั้งหมด:</span>
-                  <span>{modalDetailData.total_notes.toLocaleString()}</span>
-                </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      {!isLoading && filteredTableData.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50 sticky left-0 z-10">
+                    ที่ทำการ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    สถานะ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    ยอดรวม
+                  </th>
+                  {REPORT_REASONS.map((r) => (
+                    <th
+                      key={r.key}
+                      className="px-4 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider min-w-[60px]"
+                      title={r.label}
+                    >
+                      {r.key}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {filteredTableData.map((row) => (
+                  <tr
+                    key={row.postal_code}
+                    className="hover:bg-gray-50/80 transition-colors"
+                  >
+                    <td className="px-6 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white hover:bg-gray-50 z-10 shadow-[1px_0_5px_rgba(0,0,0,0.05)]">
+                      {row.office_name}{" "}
+                      <span className="text-gray-400 font-normal ml-1">
+                        ({row.postal_code})
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap">
+                      {row.status === "reported" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          ✓ รายงานแล้ว
+                        </span>
+                      ) : row.status === "not_reported" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          ✕ ขาดส่ง
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 text-sm font-bold text-gray-900">
+                      {row.is_reported && row.total_notes > 0 ? (
+                        <button
+                          onClick={() => handleShowReportDetails(row)}
+                          className="hover:text-blue-600 hover:underline"
+                        >
+                          {row.total_notes.toLocaleString()}
+                        </button>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    {REPORT_REASONS.map((r) => (
+                      <td
+                        key={r.key}
+                        className="px-4 py-3 text-center text-sm text-gray-600 border-l border-dashed border-gray-100"
+                      >
+                        {row.is_reported &&
+                        row.notes_data_aggregated[r.key] > 0 ? (
+                          row.notes_data_aggregated[r.key]
+                        ) : (
+                          <span className="text-gray-200">-</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {isDetailModalOpen && modalDetailData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900">
+                {modalDetailData.office_name}
+              </h3>
+              <p className="text-sm text-gray-500">รายละเอียดสาเหตุ</p>
+            </div>
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              {REPORT_REASONS.map((r) => {
+                const val = modalDetailData.notes_data[r.key] || 0;
+                if (val === 0) return null;
+                return (
+                  <div
+                    key={r.key}
+                    className="flex justify-between py-2 border-b border-gray-50 last:border-0"
+                  >
+                    <span className="text-sm text-gray-600">
+                      {r.key} - {r.label}
+                    </span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {val}
+                    </span>
+                  </div>
+                );
+              })}
+              <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between text-base font-bold">
+                <span>รวมทั้งหมด</span>
+                <span className="text-red-600">
+                  {modalDetailData.total_notes}
+                </span>
               </div>
             </div>
-            <div className="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
+            <div className="p-4 bg-gray-50 text-right">
               <button
                 onClick={handleCloseDetailModal}
-                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"
+                className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-black transition-colors"
               >
-                ปิด
+                ปิดหน้าต่าง
               </button>
             </div>
           </div>
@@ -2402,35 +2301,63 @@ const NotesReportView = ({ active }: ViewProps) => {
     </div>
   );
 };
+// ######################################################################
+//   Main Layout
+// ######################################################################
 
 export default function Home() {
   const [activeView, setActiveView] = useState("dashboard");
+
   return (
-    <div>
-      <div className="bg-white shadow-md p-4 flex space-x-4">
-        <button
-          onClick={() => setActiveView("dashboard")}
-          className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
-            activeView === "dashboard"
-              ? "bg-red-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          ประสิทธิภาพการนำจ่าย และ การโทรนัดหมายนำจ่าย
-        </button>
-        <button
-          onClick={() => setActiveView("notes")}
-          className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
-            activeView === "notes"
-              ? "bg-red-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          รายงานหมายเหตุ
-        </button>
-      </div>
-      <DashboardView active={activeView === "dashboard"} />
-      <NotesReportView active={activeView === "notes"} />
+    <div className="min-h-screen font-sans selection:bg-red-100 selection:text-red-900">
+      {/* Top Navigation Bar */}
+      <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-red-200">
+                Q
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 leading-tight">
+                  QMS Summary
+                </h1>
+                <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
+                  Thailand Post Data Visualization
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={() => setActiveView("dashboard")}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                  activeView === "dashboard"
+                    ? "bg-gray-900 text-white shadow-md"
+                    : "text-gray-500 hover:bg-gray-100"
+                }`}
+              >
+                ภาพรวมนำจ่าย
+              </button>
+              <button
+                onClick={() => setActiveView("notes")}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                  activeView === "notes"
+                    ? "bg-gray-900 text-white shadow-md"
+                    : "text-gray-500 hover:bg-gray-100"
+                }`}
+              >
+                รายงานหมายเหตุ
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content Area */}
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <DashboardView active={activeView === "dashboard"} />
+        <NotesReportView active={activeView === "notes"} />
+      </main>
     </div>
   );
 }
