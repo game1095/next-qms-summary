@@ -1329,7 +1329,7 @@ const DashboardView = ({ active }: ViewProps) => {
                       {isProvinceSummary ? "ชื่อสังกัด" : "ที่ทำการ"}
                     </th>
                     <th
-                      colSpan={7}
+                      colSpan={5}
                       className="py-2 text-center border-b border-gray-300 bg-blue-50 text-blue-800 font-bold border-r-4 border-gray-300 text-lg"
                     >
                       ประสิทธิภาพการนำจ่าย
@@ -1349,13 +1349,11 @@ const DashboardView = ({ active }: ViewProps) => {
                       "รายงานผล (ชิ้น)",
                       "สำเร็จ (ชิ้น)",
                       "สำเร็จ (%)",
-                      "ไม่สำเร็จ (ชิ้น)",
-                      "ไม่สำเร็จ (%)",
                     ].map((h, i) => (
                       <th
                         key={h}
                         className={`px-4 py-3 text-right border-b border-gray-200 ${
-                          i === 6 ? "border-r-4 border-gray-300" : ""
+                          i === 4 ? "border-r-4 border-gray-300" : ""
                         }`}
                       >
                         {h}
@@ -1382,12 +1380,18 @@ const DashboardView = ({ active }: ViewProps) => {
                     const [keyE, keyF] = compositeKey.split("||");
                     const rowSuccessRate =
                       sums.sumH > 0 ? (sums.sumM / sums.sumH) * 100 : 0;
-                    const rowFailureRate =
-                      sums.sumH > 0 ? (sums.sumO / sums.sumH) * 100 : 0;
                     const callSuccessRate =
                       sums.sumH > 0 ? (sums.sumQ / sums.sumH) * 100 : 0;
                     const callFailRate =
                       sums.sumH > 0 ? (sums.sumS / sums.sumH) * 100 : 0;
+
+                    // ใช้ค่าที่ปัดแล้วมาคำนวณสี เพื่อความถูกต้องตามที่ตาเห็น
+                    const displaySuccessRate = parseFloat(
+                      rowSuccessRate.toFixed(1)
+                    );
+                    const displayCallRate = parseFloat(
+                      callSuccessRate.toFixed(1)
+                    );
 
                     return (
                       <tr
@@ -1418,13 +1422,13 @@ const DashboardView = ({ active }: ViewProps) => {
                         <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-gray-500 text-right">
                           {sums.sumM.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-right border-r-4 border-gray-300">
                           <div className="flex justify-end">
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-base font-medium ${
-                                rowSuccessRate >= 98
+                                displaySuccessRate >= 98
                                   ? "bg-green-100 text-green-800"
-                                  : rowSuccessRate >= 95
+                                  : displaySuccessRate >= 95
                                   ? "bg-yellow-100 text-yellow-800"
                                   : "bg-red-100 text-red-800"
                               }`}
@@ -1434,19 +1438,13 @@ const DashboardView = ({ active }: ViewProps) => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right">
-                          {sums.sumO.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right border-r-4 border-gray-300">
-                          {rowFailureRate.toFixed(1)}%
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right">
                           {sums.sumQ.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="flex justify-end">
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-base font-medium ${
-                                callSuccessRate >= 50
+                                displayCallRate >= 50
                                   ? "bg-green-100 text-green-800"
                                   : "bg-red-100 text-red-800"
                               }`}
@@ -1482,13 +1480,15 @@ const DashboardView = ({ active }: ViewProps) => {
                     <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right">
                       {summaryKPIs.M.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <td className="px-6 py-4 whitespace-nowrap text-right border-r-4 border-gray-300">
                       <div className="flex justify-end">
                         <span
                           className={`px-2.5 py-0.5 rounded-full text-base font-bold ${
-                            summaryKPIs.successRate >= 98
+                            parseFloat(summaryKPIs.successRate.toFixed(1)) >= 98
                               ? "bg-green-100 text-green-800"
-                              : summaryKPIs.successRate >= 95
+                              : parseFloat(
+                                  summaryKPIs.successRate.toFixed(1)
+                                ) >= 95
                               ? "bg-yellow-100 text-yellow-800"
                               : "bg-red-100 text-red-800"
                           }`}
@@ -1496,12 +1496,6 @@ const DashboardView = ({ active }: ViewProps) => {
                           {summaryKPIs.successRate.toFixed(1)}%
                         </span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right">
-                      {summaryKPIs.O.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right border-r-4 border-gray-300">
-                      {summaryKPIs.failureRate.toFixed(1)}%
                     </td>
                     {(() => {
                       const footerCallSuccessRate =
@@ -1512,6 +1506,10 @@ const DashboardView = ({ active }: ViewProps) => {
                         summaryKPIs.H > 0
                           ? (summaryKPIs.S / summaryKPIs.H) * 100
                           : 0;
+                      const displayFooterCallRate = parseFloat(
+                        footerCallSuccessRate.toFixed(1)
+                      );
+
                       return (
                         <>
                           <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right">
@@ -1521,7 +1519,7 @@ const DashboardView = ({ active }: ViewProps) => {
                             <div className="flex justify-end">
                               <span
                                 className={`px-2.5 py-0.5 rounded-full text-base font-bold ${
-                                  footerCallSuccessRate >= 50
+                                  displayFooterCallRate >= 50
                                     ? "bg-green-100 text-green-800"
                                     : "bg-red-100 text-red-800"
                                 }`}
@@ -1542,6 +1540,25 @@ const DashboardView = ({ active }: ViewProps) => {
                   </tr>
                 </tfoot>
               </table>
+            </div>
+          </div>
+
+          {/* Legend / Criteria Explanation */}
+          <div className="mt-4 flex flex-wrap items-center gap-6 text-sm text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-100">
+            <span className="font-bold mr-2">เกณฑ์การวัดผล:</span>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-green-500"></span>
+              <span className="font-medium text-green-700">ดีเยี่ยม</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-yellow-400"></span>
+              <span className="font-medium text-yellow-700">ดี</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-500"></span>
+              <span className="font-medium text-red-700">
+                ติดตามอย่างเร่งด่วน
+              </span>
             </div>
           </div>
         </>
