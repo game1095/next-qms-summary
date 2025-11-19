@@ -1454,7 +1454,7 @@ const DashboardView = ({ active }: ViewProps) => {
                         onClick={() => setSelectedServiceFilter("GROUP_EJW")}
                         className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
                           selectedServiceFilter === "GROUP_EJW"
-                            ? "bg-blue-600 text-white" // ใช้สีน้ำเงินเพื่อแยกความแตกต่าง
+                            ? "bg-red-600 text-white" // ใช้สีน้ำเงินเพื่อแยกความแตกต่าง
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
@@ -1466,7 +1466,7 @@ const DashboardView = ({ active }: ViewProps) => {
                         onClick={() => setSelectedServiceFilter("GROUP_COD")}
                         className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
                           selectedServiceFilter === "GROUP_COD"
-                            ? "bg-blue-600 text-white"
+                            ? "bg-red-600 text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
