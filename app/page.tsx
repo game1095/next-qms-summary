@@ -1122,9 +1122,9 @@ const DashboardView = ({ active }: ViewProps) => {
                     {key === "all"
                       ? "ทุกบริการ"
                       : key === "GROUP_EJW"
-                      ? "EMS (No COD)"
+                      ? "EMS (ไม่รวม COD)"
                       : key === "GROUP_COD"
-                      ? "COD"
+                      ? "รวม COD"
                       : key}
                   </button>
                 ))}
@@ -2323,7 +2323,7 @@ export default function Home() {
                   QMS Summary
                 </h1>
                 <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
-                  Thailand Post Data Visualization
+                  Made with 💖 by Megamind
                 </p>
               </div>
             </div>
