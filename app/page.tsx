@@ -731,18 +731,25 @@ const DashboardView = ({ active }: ViewProps) => {
   };
 
   // [*** แก้ไข: เพิ่ม Logic สรุป ปจ. ***]
+  // [*** แก้ไข: เพิ่ม Logic สรุป ปจ. และ Group Filter ***]
   const aggregatedData = useMemo((): [string, AggregatedSums][] => {
     const summary = new Map<string, AggregatedSums>();
 
-    // [*** ใหม่: Logic สำหรับ 'province-summary' ***]
+    // Helper function สำหรับเช็ค Filter
+    const isServiceMatch = (fileKey: string, filter: string) => {
+      if (filter === "all") return true;
+      if (filter === "GROUP_EJW")
+        return ["E(E)", "E(J)", "E(W)"].includes(fileKey);
+      if (filter === "GROUP_COD") return ["E-BCOD", "E-RCOD"].includes(fileKey);
+      return fileKey === filter;
+    };
+
+    // [*** 1. Logic สำหรับ 'province-summary' ***]
     if (selectedFilter === "province-summary") {
       supabaseData.forEach((item: DeliveryDataRow) => {
-        // [*** 1. (NEW) Service Filter ***]
-        if (
-          selectedServiceFilter !== "all" &&
-          item.file_key !== selectedServiceFilter
-        ) {
-          return; // Skip if service doesn't match
+        // [*** แก้ไข: ใช้ Helper function เช็ค Group ***]
+        if (!isServiceMatch(item.file_key, selectedServiceFilter)) {
+          return; // Skip
         }
 
         const provinceKey = getProvinceKey(item.cole);
@@ -800,12 +807,9 @@ const DashboardView = ({ active }: ViewProps) => {
     }
 
     supabaseData.forEach((item: DeliveryDataRow) => {
-      // [*** 1. (NEW) Service Filter ***]
-      if (
-        selectedServiceFilter !== "all" &&
-        item.file_key !== selectedServiceFilter
-      ) {
-        return; // Skip if service doesn't match
+      // [*** แก้ไข: ใช้ Helper function เช็ค Group ***]
+      if (!isServiceMatch(item.file_key, selectedServiceFilter)) {
+        return; // Skip
       }
 
       // [*** 2. (Existing) Agency Filter ***]
@@ -836,7 +840,7 @@ const DashboardView = ({ active }: ViewProps) => {
       }
     });
     return Array.from(summary.entries());
-  }, [supabaseData, selectedFilter, selectedServiceFilter]); // [*** แก้ไข: เพิ่ม Dependency ***]
+  }, [supabaseData, selectedFilter, selectedServiceFilter]);
 
   // Logic สรุปผล (ขั้นตอนที่ 2: ค้นหาและเรียงลำดับ)
   const summaryData = useMemo(() => {
@@ -1433,6 +1437,7 @@ const DashboardView = ({ active }: ViewProps) => {
                       ⚙️ กรองตามประเภทบริการ
                     </h3>
                     <div className="flex flex-wrap gap-2">
+                      {/* ปุ่ม All */}
                       <button
                         onClick={() => setSelectedServiceFilter("all")}
                         className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
@@ -1443,6 +1448,32 @@ const DashboardView = ({ active }: ViewProps) => {
                       >
                         ทุกบริการ
                       </button>
+
+                      {/* [*** ใหม่: ปุ่มรวม E J W ***] */}
+                      <button
+                        onClick={() => setSelectedServiceFilter("GROUP_EJW")}
+                        className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
+                          selectedServiceFilter === "GROUP_EJW"
+                            ? "bg-blue-600 text-white" // ใช้สีน้ำเงินเพื่อแยกความแตกต่าง
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        รวม E J W
+                      </button>
+
+                      {/* [*** ใหม่: ปุ่มรวม COD ***] */}
+                      <button
+                        onClick={() => setSelectedServiceFilter("GROUP_COD")}
+                        className={`py-2 px-5 rounded-lg font-semibold transition-colors ${
+                          selectedServiceFilter === "GROUP_COD"
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        รวม COD
+                      </button>
+
+                      {/* ปุ่มแยกตามไฟล์เดิม */}
                       {FILE_KEYS.map((serviceKey) => (
                         <button
                           key={serviceKey}
