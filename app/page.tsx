@@ -1324,33 +1324,33 @@ const DashboardView = ({ active }: ViewProps) => {
                   <tr className="bg-gray-200 text-gray-700 uppercase text-sm leading-normal">
                     <th
                       rowSpan={2}
-                      className="py-3 px-6 text-left border-b border-gray-200 bg-gray-100 sticky left-0 z-20"
+                      className="py-3 px-6 text-left border-b border-gray-200 bg-gray-100 sticky left-0 z-20 text-lg"
                     >
                       {isProvinceSummary ? "ชื่อสังกัด" : "ที่ทำการ"}
                     </th>
                     <th
                       colSpan={7}
-                      className="py-2 text-center border-b border-gray-300 bg-blue-50 text-blue-800 font-bold border-r-4 border-gray-300"
+                      className="py-2 text-center border-b border-gray-300 bg-blue-50 text-blue-800 font-bold border-r-4 border-gray-300 text-lg"
                     >
                       ประสิทธิภาพการนำจ่าย
                     </th>
                     <th
                       colSpan={4}
-                      className="py-2 text-center border-b border-gray-300 bg-purple-50 text-purple-800 font-bold"
+                      className="py-2 text-center border-b border-gray-300 bg-purple-50 text-purple-800 font-bold text-lg"
                     >
                       ประสิทธิภาพการโทร
                     </th>
                   </tr>
-                  <tr className="bg-gray-50 text-gray-600 text-xs uppercase font-semibold">
+                  <tr className="bg-gray-50 text-gray-600 text-base uppercase font-semibold">
                     {/* Delivery Columns */}
                     {[
-                      "เตรียมการ (H)",
-                      "ไม่รายงาน (I)",
-                      "รายงานผล (K)",
-                      "สำเร็จ (M)",
-                      "% สำเร็จ",
-                      "ไม่สำเร็จ (O)",
-                      "% ไม่สำเร็จ",
+                      "เตรียมการ (ชิ้น)",
+                      "ไม่รายงาน (ชิ้น)",
+                      "รายงานผล (ชิ้น)",
+                      "สำเร็จ (ชิ้น)",
+                      "สำเร็จ (%)",
+                      "ไม่สำเร็จ (%)",
+                      "ไม่สำเร็จ (%)",
                     ].map((h, i) => (
                       <th
                         key={h}
@@ -1363,10 +1363,10 @@ const DashboardView = ({ active }: ViewProps) => {
                     ))}
                     {/* Call Columns */}
                     {[
-                      "โทรสำเร็จ",
-                      "% โทรสำเร็จ",
-                      "โทรไม่สำเร็จ",
-                      "% โทรไม่สำเร็จ",
+                      "โทรสำเร็จ (ชิ้น",
+                      "โทรสำเร็จ (%)",
+                      "โทรไม่สำเร็จ (ชิ้น)",
+                      "โทรไม่สำเร็จ (%)",
                     ].map((h) => (
                       <th
                         key={h}
@@ -1394,7 +1394,7 @@ const DashboardView = ({ active }: ViewProps) => {
                         key={compositeKey}
                         className="hover:bg-gray-50/80 transition-colors"
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-gray-900">
                           {isProvinceSummary ? (
                             keyF
                           ) : (
@@ -1406,22 +1406,22 @@ const DashboardView = ({ active }: ViewProps) => {
                             </button>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right">
                           {sums.sumH.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right">
                           {sums.sumI.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right">
                           {sums.sumK.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-gray-500 text-right">
                           {sums.sumM.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="flex justify-end">
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              className={`px-2.5 py-0.5 rounded-full text-base font-medium ${
                                 rowSuccessRate >= 98
                                   ? "bg-green-100 text-green-800"
                                   : rowSuccessRate >= 95
@@ -1433,19 +1433,19 @@ const DashboardView = ({ active }: ViewProps) => {
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right">
                           {sums.sumO.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right border-r-4 border-gray-300">
+                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right border-r-4 border-gray-300">
                           {rowFailureRate.toFixed(1)}%
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right">
                           {sums.sumQ.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="flex justify-end">
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              className={`px-2.5 py-0.5 rounded-full text-base font-medium ${
                                 callSuccessRate >= 50
                                   ? "bg-green-100 text-green-800"
                                   : "bg-red-100 text-red-800"
@@ -1455,10 +1455,10 @@ const DashboardView = ({ active }: ViewProps) => {
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right">
                           {sums.sumS.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500 text-right">
                           {callFailRate.toFixed(1)}%
                         </td>
                       </tr>
@@ -1467,25 +1467,25 @@ const DashboardView = ({ active }: ViewProps) => {
                 </tbody>
                 <tfoot className="bg-gray-50 border-t border-gray-200 font-bold">
                   <tr>
-                    <td className="px-6 py-4 text-sm text-gray-900 uppercase text-right">
+                    <td className="px-6 py-4 text-base text-gray-900 uppercase text-right">
                       ยอดรวม
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right">
                       {summaryKPIs.H.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right">
                       {summaryKPIs.I.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right">
                       {summaryKPIs.K.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right">
                       {summaryKPIs.M.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end">
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                          className={`px-2.5 py-0.5 rounded-full text-base font-bold ${
                             summaryKPIs.successRate >= 98
                               ? "bg-green-100 text-green-800"
                               : summaryKPIs.successRate >= 95
@@ -1497,10 +1497,10 @@ const DashboardView = ({ active }: ViewProps) => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right">
                       {summaryKPIs.O.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right border-r-4 border-gray-300">
+                    <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right border-r-4 border-gray-300">
                       {summaryKPIs.failureRate.toFixed(1)}%
                     </td>
                     {(() => {
@@ -1514,13 +1514,13 @@ const DashboardView = ({ active }: ViewProps) => {
                           : 0;
                       return (
                         <>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                          <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 text-right">
                             {(summaryKPIs.Q || 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
                             <div className="flex justify-end">
                               <span
-                                className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                className={`px-2.5 py-0.5 rounded-full text-base font-bold ${
                                   footerCallSuccessRate >= 50
                                     ? "bg-green-100 text-green-800"
                                     : "bg-red-100 text-red-800"
