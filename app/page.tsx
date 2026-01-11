@@ -9,12 +9,442 @@ import "./datepicker.css";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
+import { Session } from "@supabase/supabase-js";
 
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
-// ######################################################################
-//   [Types และ Interfaces]
-// ######################################################################
+type ProvinceDefinition = {
+  key: string;
+  label: string;
+  codes: Set<string>;
+};
+
+type RegionConfig = {
+  regionId: string;
+  regionName: string;
+  provinces: ProvinceDefinition[];
+};
+
+const reg6Provinces: ProvinceDefinition[] = [
+  {
+    key: "nakhon-sawan",
+    label: "ปจ.นครสวรรค์",
+    codes: new Set([
+      "60000",
+      "60001",
+      "60002",
+      "60110",
+      "60120",
+      "60130",
+      "60140",
+      "60150",
+      "60160",
+      "60170",
+      "60180",
+      "60190",
+      "60210",
+      "60220",
+      "60230",
+      "60240",
+      "60250",
+      "60260",
+      "428",
+    ]),
+  },
+  {
+    key: "uthai-thani",
+    label: "ปจ.อุทัยธานี",
+    codes: new Set([
+      "61000",
+      "61110",
+      "61120",
+      "61130",
+      "61140",
+      "61150",
+      "61160",
+      "61170",
+      "61180",
+    ]),
+  },
+  {
+    key: "kamphaeng-phet",
+    label: "ปจ.กำแพงเพชร",
+    codes: new Set([
+      "62000",
+      "62110",
+      "62120",
+      "62130",
+      "62140",
+      "62150",
+      "62160",
+      "62170",
+      "62180",
+      "62190",
+      "62210",
+      "89",
+      "94",
+    ]),
+  },
+  {
+    key: "tak",
+    label: "ปจ.ตาก",
+    codes: new Set([
+      "63000",
+      "63110",
+      "63111",
+      "63120",
+      "63130",
+      "63140",
+      "63150",
+      "63160",
+      "63170",
+      "63180",
+      "58",
+      "154",
+    ]),
+  },
+  {
+    key: "sukhothai",
+    label: "ปจ.สุโขทัย",
+    codes: new Set([
+      "64000",
+      "64110",
+      "64120",
+      "64130",
+      "64140",
+      "64150",
+      "64160",
+      "64170",
+      "64180",
+      "64190",
+      "64210",
+      "64220",
+      "64230",
+    ]),
+  },
+  {
+    key: "phitsanulok",
+    label: "ปจ.พิษณุโลก",
+    codes: new Set([
+      "65000",
+      "65001",
+      "65110",
+      "65120",
+      "65130",
+      "65140",
+      "65150",
+      "65160",
+      "65170",
+      "65180",
+      "65190",
+      "65210",
+      "65220",
+      "65230",
+      "65240",
+      "36",
+      "61",
+      "112",
+      "287",
+      "303",
+    ]),
+  },
+  {
+    key: "phichit",
+    label: "ปจ.พิจิตร",
+    codes: new Set([
+      "66000",
+      "66110",
+      "66120",
+      "66130",
+      "66140",
+      "66150",
+      "66160",
+      "66170",
+      "66180",
+      "66190",
+      "66210",
+      "66220",
+      "66230",
+    ]),
+  },
+  {
+    key: "phetchabun",
+    label: "ปจ.เพชรบูรณ์",
+    codes: new Set([
+      "67000",
+      "67110",
+      "67120",
+      "67130",
+      "67140",
+      "67150",
+      "67160",
+      "67170",
+      "67180",
+      "67190",
+      "67210",
+      "67220",
+      "67230",
+      "67240",
+      "67250",
+      "67260",
+      "67270",
+      "67280",
+    ]),
+  },
+  {
+    key: "sp-nakhon-sawan",
+    label: "ศป.นครสวรรค์",
+    codes: new Set(["60010"]),
+  },
+  {
+    key: "sp-phitsanulok",
+    label: "ศป.พิษณุโลก",
+    codes: new Set(["65010"]),
+  },
+];
+
+const REG6_CONFIG: RegionConfig = {
+  regionId: "reg6",
+  regionName: "ปข.6",
+  provinces: reg6Provinces,
+};
+
+const reg4Provinces: ProvinceDefinition[] = [
+  {
+    key: "khon-kaen",
+    label: "ปจ.ขอนแก่น",
+    codes: new Set([
+      "00122",
+      "40000",
+      "40001",
+      "40002",
+      "40003",
+      "40004",
+      "40099",
+      "40110",
+      "40120",
+      "40130",
+      "40140",
+      "40150",
+      "40160",
+      "40170",
+      "40180",
+      "40190",
+      "40210",
+      "40220",
+      "40230",
+      "40240",
+      "40250",
+      "40260",
+      "40270",
+      "40280",
+      "40290",
+      "40310",
+      "40320",
+      "40330",
+      "40340",
+      "40350",
+      "40702",
+      "40703",
+      "40705",
+      "40771",
+      "09075",
+      "09089",
+      "09095",
+      "09103",
+      "09049",
+      "09053",
+      "00223",
+      "00255",
+      "09192",
+    ]),
+  },
+  {
+    key: "udon-thani",
+    label: "ปจ.อุดรธานี",
+    codes: new Set([
+      "41000",
+      "41001",
+      "41002",
+      "41110",
+      "41130",
+      "41150",
+      "41160",
+      "41190",
+      "41210",
+      "41220",
+      "41230",
+      "41240",
+      "41250",
+      "41260",
+      "41280",
+      "41290",
+      "41310",
+      "41320",
+      "41330",
+      "41340",
+      "41360",
+      "41370",
+      "41380",
+      "41771",
+      "00148",
+      "00179",
+      "00198",
+      "09230",
+      "09234",
+      "09106",
+      "00241",
+      "00276",
+      "05027",
+      "00364",
+      "08015",
+    ]),
+  },
+  {
+    key: "loei",
+    label: "ปจ.เลย",
+    codes: new Set([
+      "42000",
+      "42001",
+      "42100",
+      "42110",
+      "42120",
+      "42130",
+      "42140",
+      "42150",
+      "42160",
+      "42170",
+      "42180",
+      "42190",
+      "42210",
+      "42220",
+      "42230",
+      "42240",
+      "42711",
+      "00380",
+    ]),
+  },
+  {
+    key: "nong-khai",
+    label: "ปจ.หนองคาย",
+    codes: new Set([
+      "43000",
+      "43001",
+      "43100",
+      "43110",
+      "43120",
+      "43130",
+      "43160",
+      "43230",
+      "43701",
+      "43721",
+      "00149",
+      "00274",
+      "00293",
+      "05807",
+      "08059",
+      "08060",
+    ]),
+  },
+  {
+    key: "maha-sarakham",
+    label: "ปจ.มหาสารคาม",
+    codes: new Set([
+      "44000",
+      "44001",
+      "44110",
+      "44120",
+      "44130",
+      "44140",
+      "44150",
+      "44151",
+      "44160",
+      "44170",
+      "44180",
+      "44190",
+      "44210",
+      "44701",
+      "44751",
+      "00327",
+      "00430",
+      "00345",
+    ]),
+  },
+  {
+    key: "kalasin",
+    label: "ปจ.กาฬสินธุ์",
+    codes: new Set([
+      "46000",
+      "46110",
+      "46120",
+      "46130",
+      "46140",
+      "46150",
+      "46160",
+      "46170",
+      "46180",
+      "46190",
+      "46210",
+      "46220",
+      "46230",
+      "46240",
+      "46250",
+      "09050",
+    ]),
+  },
+  {
+    key: "bueng-kan",
+    label: "ปจ.บึงกาฬ",
+    codes: new Set([
+      "38000",
+      "38150",
+      "38170",
+      "38180",
+      "38190",
+      "38210",
+      "38220",
+      "38701",
+      "08058",
+      "00420",
+    ]),
+  },
+  {
+    key: "nong-bua-lamphu",
+    label: "ปจ.หนองบัวลำภู",
+    codes: new Set([
+      "39000",
+      "39140",
+      "39170",
+      "39180",
+      "39270",
+      "39350",
+      "00329",
+    ]),
+  },
+  {
+    key: "sp-khon-kaen",
+    label: "ศป.ขอนแก่น",
+    codes: new Set(["40010"]),
+  },
+  {
+    key: "sp-udon-thani",
+    label: "ศป.อุดรธานี",
+    codes: new Set(["41010"]),
+  },
+];
+
+const REG4_CONFIG: RegionConfig = {
+  regionId: "reg4",
+  regionName: "ปข.4",
+  provinces: reg4Provinces,
+};
+
+const getRegionConfigByEmail = (email: string | undefined): RegionConfig => {
+  if (email === "reg4@email.com") {
+    return REG4_CONFIG;
+  }
+  return REG6_CONFIG;
+};
 
 interface DeliveryDataRow {
   id?: number;
@@ -72,6 +502,7 @@ interface ModalDetailData {
 
 interface ViewProps {
   active: boolean;
+  config: RegionConfig;
 }
 
 interface NotesSummary {
@@ -117,168 +548,15 @@ const initialReportFormData = REPORT_REASONS.reduce((acc, reason) => {
 
 const FILE_KEYS = ["E(E)", "E(J)", "E(W)", "E-BCOD", "E-RCOD"];
 
-// ######################################################################
-//   [Filter Definitions]
-// ######################################################################
-const nakhonSawanCodes = [
-  "60000",
-  "60001",
-  "60002",
-  "60110",
-  "60120",
-  "60130",
-  "60140",
-  "60150",
-  "60160",
-  "60170",
-  "60180",
-  "60190",
-  "60210",
-  "60220",
-  "60230",
-  "60240",
-  "60250",
-  "60260",
-  "428",
-];
-const nakhonSawanSet = new Set(nakhonSawanCodes);
-const uthaiThaniCodes = [
-  "61000",
-  "61110",
-  "61120",
-  "61130",
-  "61140",
-  "61150",
-  "61160",
-  "61170",
-  "61180",
-];
-const uthaiThaniSet = new Set(uthaiThaniCodes);
-const kamphaengPhetCodes = [
-  "62000",
-  "62110",
-  "62120",
-  "62130",
-  "62140",
-  "62150",
-  "62160",
-  "62170",
-  "62180",
-  "62190",
-  "62210",
-  "89",
-  "94",
-];
-const kamphaengPhetSet = new Set(kamphaengPhetCodes);
-const takCodes = [
-  "63000",
-  "63110",
-  "63111",
-  "63120",
-  "63130",
-  "63140",
-  "63150",
-  "63160",
-  "63170",
-  "63180",
-  "58",
-  "154",
-];
-const takSet = new Set(takCodes);
-const sukhothaiCodes = [
-  "64000",
-  "64110",
-  "64120",
-  "64130",
-  "64140",
-  "64150",
-  "64160",
-  "64170",
-  "64180",
-  "64190",
-  "64210",
-  "64220",
-  "64230",
-];
-const sukhothaiSet = new Set(sukhothaiCodes);
-const phitsanulokCodes = [
-  "65000",
-  "65001",
-  "65110",
-  "65120",
-  "65130",
-  "65140",
-  "65150",
-  "65160",
-  "65170",
-  "65180",
-  "65190",
-  "65210",
-  "65220",
-  "65230",
-  "65240",
-  "36",
-  "61",
-  "112",
-  "287",
-  "303",
-];
-const phitsanulokSet = new Set(phitsanulokCodes);
-const phichitCodes = [
-  "66000",
-  "66110",
-  "66120",
-  "66130",
-  "66140",
-  "66150",
-  "66160",
-  "66170",
-  "66180",
-  "66190",
-  "66210",
-  "66220",
-  "66230",
-];
-const phichitSet = new Set(phichitCodes);
-const phetchabunCodes = [
-  "67000",
-  "67110",
-  "67120",
-  "67130",
-  "67140",
-  "67150",
-  "67160",
-  "67170",
-  "67180",
-  "67190",
-  "67210",
-  "67220",
-  "67230",
-  "67240",
-  "67250",
-  "67260",
-  "67270",
-  "67280",
-];
-const phetchabunSet = new Set(phetchabunCodes);
-const spNakhonSawanCodes = ["60010"];
-const spNakhonSawanSet = new Set(spNakhonSawanCodes);
-const spPhitsanulokCodes = ["65010"];
-const spPhitsanulokSet = new Set(spPhitsanulokCodes);
-
-const filterDisplayNames: { [key: string]: string } = {
-  all: "ปข.6 (ทุกที่ทำการ)",
-  "province-summary": "ปข.6 (สรุปตาม ปจ.)",
-  "nakhon-sawan": "ปจ.นครสวรรค์",
-  "uthai-thani": "ปจ.อุทัยธานี",
-  "kamphaeng-phet": "ปจ.กำแพงเพชร",
-  tak: "ปจ.ตาก",
-  sukhothai: "ปจ.สุโขทัย",
-  phitsanulok: "ปจ.พิษณุโลก",
-  phichit: "ปจ.พิจิตร",
-  phetchabun: "ปจ.เพชรบูรณ์",
-  "sp-nakhon-sawan": "ศป.นครสวรรค์",
-  "sp-phitsanulok": "ศป.พิษณุโลก",
+const getDisplayNamesFromConfig = (config: RegionConfig) => {
+  const map: { [key: string]: string } = {
+    all: `${config.regionName} (ทุกที่ทำการ)`,
+    "province-summary": `${config.regionName} (สรุปตาม ปจ.)`,
+  };
+  config.provinces.forEach((p) => {
+    map[p.key] = p.label;
+  });
+  return map;
 };
 
 const getCodStatus = (code: string | number) => {
@@ -407,10 +685,6 @@ const NotesPieChart = ({ notesSummary, reasonMap }: PieChartProps) => {
   return <Pie data={data} options={options} />;
 };
 
-// ######################################################################
-//   UI Components
-// ######################################################################
-
 const FilterButton = ({ active, onClick, children }: any) => (
   <button
     onClick={onClick}
@@ -424,7 +698,6 @@ const FilterButton = ({ active, onClick, children }: any) => (
   </button>
 );
 
-// --- New Modern KPI Card ---
 const KPICard = ({
   title,
   value,
@@ -469,7 +742,6 @@ const KPICard = ({
   const activeStyle = styles[type] || styles.neutral;
 
   if (highlight) {
-    // Gradient Card for "Highlighted" KPIs
     const gradientClass =
       type === "success"
         ? "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-200"
@@ -506,7 +778,6 @@ const KPICard = ({
     );
   }
 
-  // Standard Card
   return (
     <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-between group">
       <div>
@@ -537,11 +808,88 @@ const KPICard = ({
   );
 };
 
-// ######################################################################
-//   Dashboard View
-// ######################################################################
+const LoginView = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-const DashboardView = ({ active }: ViewProps) => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setErrorMsg(null);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setErrorMsg(error.message);
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden p-8 space-y-6 border border-gray-100">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-600 rounded-xl flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-red-200 mx-auto mb-4">
+            Q
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">QMS Summary</h2>
+          <p className="text-gray-500 mt-2">กรุณาเข้าสู่ระบบเพื่อดูข้อมูล</p>
+        </div>
+
+        {errorMsg && (
+          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-100 text-center">
+            {errorMsg === "Invalid login credentials"
+              ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+              : errorMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border-gray-300 focus:ring-red-500 focus:border-red-500"
+              placeholder="user@example.com"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg border-gray-300 focus:ring-red-500 focus:border-red-500"
+              placeholder="••••••••"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 bg-gray-900 text-white font-bold rounded-lg hover:bg-black transition-colors shadow-lg disabled:opacity-50"
+          >
+            {isLoading ? "กำลังตรวจสอบ..." : "เข้าสู่ระบบ"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const DashboardView = ({ active, config }: ViewProps) => {
   const [supabaseData, setSupabaseData] = useState<DeliveryDataRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -570,18 +918,24 @@ const DashboardView = ({ active }: ViewProps) => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
 
+  const filterDisplayNames = useMemo(
+    () => getDisplayNamesFromConfig(config),
+    [config]
+  );
+
+  const allUserPostalCodes = useMemo(() => {
+    const codes: string[] = [];
+    config.provinces.forEach((p) => p.codes.forEach((c) => codes.push(c)));
+    return codes;
+  }, [config]);
+
   const getProvinceKey = (postalCode: string): string => {
     const code = String(postalCode);
-    if (nakhonSawanSet.has(code)) return "nakhon-sawan";
-    if (uthaiThaniSet.has(code)) return "uthai-thani";
-    if (kamphaengPhetSet.has(code)) return "kamphaeng-phet";
-    if (takSet.has(code)) return "tak";
-    if (sukhothaiSet.has(code)) return "sukhothai";
-    if (phitsanulokSet.has(code)) return "phitsanulok";
-    if (phichitSet.has(code)) return "phichit";
-    if (phetchabunSet.has(code)) return "phetchabun";
-    if (spNakhonSawanSet.has(code)) return "sp-nakhon-sawan";
-    if (spPhitsanulokSet.has(code)) return "sp-phitsanulok";
+    for (const province of config.provinces) {
+      if (province.codes.has(code)) {
+        return province.key;
+      }
+    }
     return "other";
   };
 
@@ -594,6 +948,10 @@ const DashboardView = ({ active }: ViewProps) => {
     setUploadDate(new Date(yesterday));
   }, []);
 
+  useEffect(() => {
+    setSelectedFilter("all");
+  }, [config]);
+
   const fetchData = async (start: Date | null, end: Date | null) => {
     setIsLoading(true);
     setSupabaseData([]);
@@ -604,19 +962,42 @@ const DashboardView = ({ active }: ViewProps) => {
     const isoStartDate = formatDateToISO(start);
     const isoEndDate = formatDateToISO(end);
 
-    const { data, error } = await supabase
-      .from("delivery_data")
-      .select("*")
-      .gte("report_date", isoStartDate)
-      .lte("report_date", isoEndDate);
+    try {
+      let allData: DeliveryDataRow[] = [];
+      let hasMore = true;
+      let page = 0;
+      const pageSize = 1000;
 
-    if (error) {
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("delivery_data")
+          .select("*")
+          .gte("report_date", isoStartDate)
+          .lte("report_date", isoEndDate)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...(data as DeliveryDataRow[])];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+      setSupabaseData(allData);
+    } catch (error: any) {
       console.error("Error fetching delivery data:", error);
       alert("ไม่สามารถดึงข้อมูลหลักได้: " + error.message);
-    } else {
-      setSupabaseData(data || []);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -698,43 +1079,56 @@ const DashboardView = ({ active }: ViewProps) => {
       const { count, error: countError } = await supabase
         .from("delivery_data")
         .select("id", { count: "exact", head: true })
-        .eq("report_date", reportDate);
+        .eq("report_date", reportDate)
+        .in("file_key", fileKeys)
+        .in("cole", allUserPostalCodes);
+
       if (countError)
         throw new Error("ไม่สามารถตรวจสอบข้อมูลซ้ำได้: " + countError.message);
+
       if ((count ?? 0) > 0) {
         alert(
-          `พบข้อมูลสำหรับวันที่ ${formatToFullThaiDate(
-            uploadDate
-          )} อยู่ในระบบแล้ว\n(ระบบไม่อนุญาตให้อัปโหลดทับ) กรุณาเลือกวันอื่น`
+          `คุณ (${config.regionName}) ได้อัปโหลดข้อมูลประเภท ${fileKeys.join(
+            ", "
+          )} สำหรับวันที่ ${formatToFullThaiDate(uploadDate)} เรียบร้อยแล้ว`
         );
         setIsUploading(false);
         return;
       }
 
       const rowsToInsert: Omit<DeliveryDataRow, "id">[] = [];
+      const userPostalSet = new Set(allUserPostalCodes);
+
       Object.entries(uploadFilesData).forEach(([fileKey, fileData]) => {
         fileData.forEach((item: any) => {
-          rowsToInsert.push({
-            report_date: reportDate,
-            file_key: fileKey,
-            cole: item.colE,
-            colf: item.colF,
-            cold: item.colD,
-            colg: item.colG,
-            valueh: parseFloat(item.valueH) || 0,
-            valuei: parseFloat(item.valueI) || 0,
-            valuek: parseFloat(item.valueK) || 0,
-            valuem: parseFloat(item.valueM) || 0,
-            valueo: parseFloat(item.valueO) || 0,
-            colq: parseFloat(item.valQ) || 0,
-            colr: parseFloat(item.valR) || 0,
-            cols: parseFloat(item.valS) || 0,
-            colt: parseFloat(item.valT) || 0,
-          });
+          if (userPostalSet.has(String(item.colE))) {
+            rowsToInsert.push({
+              report_date: reportDate,
+              file_key: fileKey,
+              cole: item.colE,
+              colf: item.colF,
+              cold: item.colD,
+              colg: item.colG,
+              valueh: parseFloat(item.valueH) || 0,
+              valuei: parseFloat(item.valueI) || 0,
+              valuek: parseFloat(item.valueK) || 0,
+              valuem: parseFloat(item.valueM) || 0,
+              valueo: parseFloat(item.valueO) || 0,
+              colq: parseFloat(item.valQ) || 0,
+              colr: parseFloat(item.valR) || 0,
+              cols: parseFloat(item.valS) || 0,
+              colt: parseFloat(item.valT) || 0,
+            });
+          }
         });
       });
 
-      if (rowsToInsert.length === 0) throw new Error("ไม่พบข้อมูลที่จะอัปโหลด");
+      if (rowsToInsert.length === 0) {
+        throw new Error(
+          `ไม่พบข้อมูลที่ตรงกับพื้นที่รับผิดชอบของ ${config.regionName} ในไฟล์ที่อัปโหลด`
+        );
+      }
+
       const { error: insertError } = await supabase
         .from("delivery_data")
         .insert(rowsToInsert);
@@ -761,19 +1155,35 @@ const DashboardView = ({ active }: ViewProps) => {
 
   const aggregatedData = useMemo((): [string, AggregatedSums][] => {
     const summary = new Map<string, AggregatedSums>();
+
+    let targetSet: Set<string>;
+    if (selectedFilter === "all") {
+      targetSet = new Set();
+      config.provinces.forEach((p) => p.codes.forEach((c) => targetSet.add(c)));
+    } else {
+      const found = config.provinces.find((p) => p.key === selectedFilter);
+      targetSet = found ? found.codes : new Set();
+    }
+
     const isServiceMatch = (fileKey: string, filter: string) => {
+      const cleanKey = String(fileKey).trim();
       if (filter === "all") return true;
       if (filter === "GROUP_EJW")
-        return ["E(E)", "E(J)", "E(W)"].includes(fileKey);
-      if (filter === "GROUP_COD") return ["E-BCOD", "E-RCOD"].includes(fileKey);
-      return fileKey === filter;
+        return ["E(E)", "E(J)", "E(W)"].includes(cleanKey);
+      if (filter === "GROUP_COD")
+        return ["E-BCOD", "E-RCOD"].includes(cleanKey);
+      return cleanKey === filter;
     };
 
     if (selectedFilter === "province-summary") {
       supabaseData.forEach((item: DeliveryDataRow) => {
         if (!isServiceMatch(item.file_key, selectedServiceFilter)) return;
-        const provinceKey = getProvinceKey(item.cole);
+
+        const cleanCole = String(item.cole).trim();
+        const provinceKey = getProvinceKey(cleanCole);
+
         if (provinceKey === "other") return;
+
         const provinceName = filterDisplayNames[provinceKey] || "ไม่ระบุ";
         const compositeKey = `${provinceKey}||${provinceName}`;
         const currentSums = summary.get(compositeKey) || {
@@ -798,23 +1208,13 @@ const DashboardView = ({ active }: ViewProps) => {
       return Array.from(summary.entries());
     }
 
-    let filterSet: Set<string> | null = null;
-    if (selectedFilter === "nakhon-sawan") filterSet = nakhonSawanSet;
-    else if (selectedFilter === "uthai-thani") filterSet = uthaiThaniSet;
-    else if (selectedFilter === "kamphaeng-phet") filterSet = kamphaengPhetSet;
-    else if (selectedFilter === "tak") filterSet = takSet;
-    else if (selectedFilter === "sukhothai") filterSet = sukhothaiSet;
-    else if (selectedFilter === "phitsanulok") filterSet = phitsanulokSet;
-    else if (selectedFilter === "phichit") filterSet = phichitSet;
-    else if (selectedFilter === "phetchabun") filterSet = phetchabunSet;
-    else if (selectedFilter === "sp-nakhon-sawan") filterSet = spNakhonSawanSet;
-    else if (selectedFilter === "sp-phitsanulok") filterSet = spPhitsanulokSet;
-
     supabaseData.forEach((item: DeliveryDataRow) => {
       if (!isServiceMatch(item.file_key, selectedServiceFilter)) return;
-      if (!filterSet || filterSet.has(String(item.cole))) {
-        const keyE = String(item.cole);
-        const keyF = String(item.colf);
+      const cleanCole = String(item.cole).trim();
+
+      if (targetSet.has(cleanCole)) {
+        const keyE = cleanCole;
+        const keyF = String(item.colf).trim();
         const compositeKey = `${keyE}||${keyF}`;
         const currentSums = summary.get(compositeKey) || {
           sumH: 0,
@@ -836,8 +1236,15 @@ const DashboardView = ({ active }: ViewProps) => {
         });
       }
     });
+
     return Array.from(summary.entries());
-  }, [supabaseData, selectedFilter, selectedServiceFilter]);
+  }, [
+    supabaseData,
+    selectedFilter,
+    selectedServiceFilter,
+    config,
+    filterDisplayNames,
+  ]);
 
   const summaryData = useMemo(() => {
     const filteredArray = aggregatedData.filter(([compositeKey, sums]) => {
@@ -1012,7 +1419,6 @@ const DashboardView = ({ active }: ViewProps) => {
 
   return (
     <div className={`${active ? "block" : "hidden"} space-y-8 pb-20`}>
-      {/* Header Section */}
       <div className="space-y-4">
         <div className="flex justify-between items-start">
           <div className="space-y-1">
@@ -1036,7 +1442,6 @@ const DashboardView = ({ active }: ViewProps) => {
           </button>
         </div>
 
-        {/* Control Panel */}
         {isControlsOpen && (
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -1134,15 +1539,12 @@ const DashboardView = ({ active }: ViewProps) => {
         )}
       </div>
 
-      {/* KPI Grid & Table */}
       {!isLoading && summaryData.length > 0 && (
         <>
-          {/* Section 1: Delivery Efficiency */}
           <h3 className="text-lg font-bold text-gray-700 mb-4">
             1. ประสิทธิภาพการนำจ่าย
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* Big Cards */}
             <KPICard
               title="อัตราความสำเร็จ"
               value={`${summaryKPIs.successRate.toFixed(1)}%`}
@@ -1203,7 +1605,6 @@ const DashboardView = ({ active }: ViewProps) => {
               }
             />
 
-            {/* Smaller Cards */}
             <KPICard
               title="เตรียมการ (H)"
               value={summaryKPIs.H.toLocaleString()}
@@ -1251,7 +1652,6 @@ const DashboardView = ({ active }: ViewProps) => {
             />
           </div>
 
-          {/* Section 2: Call Efficiency */}
           <h3 className="text-lg font-bold text-gray-700 mb-4">
             2. ประสิทธิภาพการโทร
           </h3>
@@ -1316,7 +1716,6 @@ const DashboardView = ({ active }: ViewProps) => {
             />
           </div>
 
-          {/* Data Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100">
@@ -1342,7 +1741,6 @@ const DashboardView = ({ active }: ViewProps) => {
                     </th>
                   </tr>
                   <tr className="bg-gray-50 text-gray-600 text-base uppercase font-semibold">
-                    {/* Delivery Columns */}
                     {[
                       "เตรียมการ (ชิ้น)",
                       "ไม่รายงาน (ชิ้น)",
@@ -1359,7 +1757,6 @@ const DashboardView = ({ active }: ViewProps) => {
                         {h}
                       </th>
                     ))}
-                    {/* Call Columns */}
                     {[
                       "โทรสำเร็จ (ชิ้น)",
                       "โทรสำเร็จ (%)",
@@ -1385,7 +1782,6 @@ const DashboardView = ({ active }: ViewProps) => {
                     const callFailRate =
                       sums.sumH > 0 ? (sums.sumS / sums.sumH) * 100 : 0;
 
-                    // ใช้ค่าที่ปัดแล้วมาคำนวณสี เพื่อความถูกต้องตามที่ตาเห็น
                     const displaySuccessRate = parseFloat(
                       rowSuccessRate.toFixed(1)
                     );
@@ -1543,7 +1939,6 @@ const DashboardView = ({ active }: ViewProps) => {
             </div>
           </div>
 
-          {/* Legend / Criteria Explanation */}
           <div className="mt-4 flex flex-wrap items-center gap-6 text-sm text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-100">
             <span className="font-bold mr-2">เกณฑ์การวัดผล:</span>
             <div className="flex items-center gap-2">
@@ -1570,7 +1965,6 @@ const DashboardView = ({ active }: ViewProps) => {
         </div>
       )}
 
-      {/* Modal Components: Upload, Detail, Report Form */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -1795,13 +2189,8 @@ const DashboardView = ({ active }: ViewProps) => {
     </div>
   );
 };
-// ... (วางต่อท้าย DashboardView ก่อนถึง export default function Home)
 
-// ######################################################################
-//   Notes Report View (Modernized)
-// ######################################################################
-
-const NotesReportView = ({ active }: ViewProps) => {
+const NotesReportView = ({ active, config }: ViewProps) => {
   const [allTableData, setAllTableData] = useState<ReportTableRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -1819,6 +2208,15 @@ const NotesReportView = ({ active }: ViewProps) => {
     d.setDate(d.getDate() - 1);
     return d;
   });
+
+  const filterDisplayNames = useMemo(
+    () => getDisplayNamesFromConfig(config),
+    [config]
+  );
+
+  useEffect(() => {
+    setSelectedFilter("all");
+  }, [config]);
 
   const fetchNotes = async (date: Date | null, filter: string) => {
     if (!date) return;
@@ -1843,24 +2241,25 @@ const NotesReportView = ({ active }: ViewProps) => {
       const typedOfficesData =
         (officesData as { cole: string; colf: string; valueo: number }[]) || [];
 
-      let filterSet: Set<string> | null = null;
-      if (filter === "nakhon-sawan") filterSet = nakhonSawanSet;
-      else if (filter === "uthai-thani") filterSet = uthaiThaniSet;
-      else if (filter === "kamphaeng-phet") filterSet = kamphaengPhetSet;
-      else if (filter === "tak") filterSet = takSet;
-      else if (filter === "sukhothai") filterSet = sukhothaiSet;
-      else if (filter === "phitsanulok") filterSet = phitsanulokSet;
-      else if (filter === "phichit") filterSet = phichitSet;
-      else if (filter === "phetchabun") filterSet = phetchabunSet;
-      else if (filter === "sp-nakhon-sawan") filterSet = spNakhonSawanSet;
-      else if (filter === "sp-phitsanulok") filterSet = spPhitsanulokSet;
+      let filterSet: Set<string>;
+      if (filter === "all") {
+        filterSet = new Set();
+        config.provinces.forEach((p) =>
+          p.codes.forEach((c) => filterSet.add(c))
+        );
+      } else {
+        const foundProvince = config.provinces.find((p) => p.key === filter);
+        filterSet = foundProvince ? foundProvince.codes : new Set();
+      }
 
       const uniqueOfficesMap = new Map<string, string>();
       const officeFailureMap = new Map<string, number>();
 
       typedOfficesData.forEach((item) => {
         const pCode = String(item.cole);
-        if (filterSet && !filterSet.has(pCode)) return;
+
+        if (!filterSet.has(pCode)) return;
+
         if (!uniqueOfficesMap.has(pCode))
           uniqueOfficesMap.set(pCode, item.colf);
         const currentO = officeFailureMap.get(pCode) || 0;
@@ -1952,7 +2351,7 @@ const NotesReportView = ({ active }: ViewProps) => {
 
   useEffect(() => {
     if (active) fetchNotes(selectedDate, selectedFilter);
-  }, [active, selectedDate, selectedFilter]);
+  }, [active, selectedDate, selectedFilter, config]);
 
   const filteredTableData = useMemo(() => {
     if (searchTerm.trim() === "") return allTableData;
@@ -2009,7 +2408,6 @@ const NotesReportView = ({ active }: ViewProps) => {
 
   return (
     <div className={`${active ? "block" : "hidden"} space-y-8 pb-20`}>
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
@@ -2029,28 +2427,18 @@ const NotesReportView = ({ active }: ViewProps) => {
         </div>
       </div>
 
-      {/* Filter Bar */}
       <div className="flex flex-wrap gap-2 bg-white p-4 rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
-        <FilterButton
-          active={selectedFilter === "all"}
-          onClick={() => setSelectedFilter("all")}
-        >
-          แสดงทั้งหมด
-        </FilterButton>
-        {Object.keys(filterDisplayNames)
-          .filter((k) => k !== "all" && k !== "province-summary")
-          .map((k) => (
-            <FilterButton
-              key={k}
-              active={selectedFilter === k}
-              onClick={() => setSelectedFilter(k)}
-            >
-              {filterDisplayNames[k]}
-            </FilterButton>
-          ))}
+        {Object.keys(filterDisplayNames).map((filterKey) => (
+          <FilterButton
+            key={filterKey}
+            active={selectedFilter === filterKey}
+            onClick={() => setSelectedFilter(filterKey)}
+          >
+            {filterDisplayNames[filterKey]}
+          </FilterButton>
+        ))}
       </div>
 
-      {/* Search */}
       <div className="relative">
         <input
           type="text"
@@ -2074,7 +2462,6 @@ const NotesReportView = ({ active }: ViewProps) => {
         </svg>
       </div>
 
-      {/* KPI Cards */}
       {!isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <KPICard
@@ -2127,7 +2514,6 @@ const NotesReportView = ({ active }: ViewProps) => {
         </div>
       )}
 
-      {/* Chart Section */}
       {!isLoading && notesSummary.total > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 bg-white rounded-xl p-6 border border-gray-200 shadow-sm h-80">
@@ -2184,7 +2570,6 @@ const NotesReportView = ({ active }: ViewProps) => {
         </div>
       )}
 
-      {/* Table */}
       {!isLoading && filteredTableData.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -2269,7 +2654,6 @@ const NotesReportView = ({ active }: ViewProps) => {
         </div>
       )}
 
-      {/* Detail Modal */}
       {isDetailModalOpen && modalDetailData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
@@ -2318,16 +2702,25 @@ const NotesReportView = ({ active }: ViewProps) => {
     </div>
   );
 };
-// ######################################################################
-//   Main Layout
-// ######################################################################
 
-export default function Home() {
+interface HomeProps {
+  userEmail: string | undefined;
+}
+
+const Home = ({ userEmail }: HomeProps) => {
   const [activeView, setActiveView] = useState("dashboard");
+
+  const currentConfig = useMemo(
+    () => getRegionConfigByEmail(userEmail),
+    [userEmail]
+  );
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
     <div className="min-h-screen font-sans selection:bg-red-100 selection:text-red-900">
-      {/* Top Navigation Bar */}
       <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -2337,44 +2730,108 @@ export default function Home() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900 leading-tight">
-                  QMS Summary
+                  QMS Summary{" "}
+                  <span className="text-red-600">
+                    ({currentConfig.regionName})
+                  </span>
                 </h1>
                 <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
-                  Made with 💖 by Megamind
+                  Made with 💖 by Megamind ({userEmail})
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-4">
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => setActiveView("dashboard")}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                    activeView === "dashboard"
+                      ? "bg-gray-900 text-white shadow-md"
+                      : "text-gray-500 hover:bg-gray-100"
+                  }`}
+                >
+                  ภาพรวมนำจ่าย
+                </button>
+                <button
+                  onClick={() => setActiveView("notes")}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                    activeView === "notes"
+                      ? "bg-gray-900 text-white shadow-md"
+                      : "text-gray-500 hover:bg-gray-100"
+                  }`}
+                >
+                  รายงานหมายเหตุ
+                </button>
+              </div>
+
               <button
-                onClick={() => setActiveView("dashboard")}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  activeView === "dashboard"
-                    ? "bg-gray-900 text-white shadow-md"
-                    : "text-gray-500 hover:bg-gray-100"
-                }`}
+                onClick={handleLogout}
+                className="p-2 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                title="ออกจากระบบ"
               >
-                ภาพรวมนำจ่าย
-              </button>
-              <button
-                onClick={() => setActiveView("notes")}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  activeView === "notes"
-                    ? "bg-gray-900 text-white shadow-md"
-                    : "text-gray-500 hover:bg-gray-100"
-                }`}
-              >
-                รายงานหมายเหตุ
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
               </button>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Content Area */}
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
-        <DashboardView active={activeView === "dashboard"} />
-        <NotesReportView active={activeView === "notes"} />
+        <DashboardView
+          active={activeView === "dashboard"}
+          config={currentConfig}
+        />
+        <NotesReportView
+          active={activeView === "notes"}
+          config={currentConfig}
+        />
       </main>
     </div>
   );
+};
+
+export default function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-400 animate-pulse">กำลังตรวจสอบสิทธิ์...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <LoginView />;
+  }
+
+  return <Home userEmail={session.user.email} />;
 }
