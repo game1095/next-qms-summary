@@ -30,8 +30,10 @@ import DetailsModal from "../dashboard/DetailsModal";
 
 import { showUnreportedModal } from "../dashboard/UnreportedModal";
 import DailyInsights from "../dashboard/DailyInsights";
+import WelcomeGuide from "../dashboard/WelcomeGuide";
+import CountUp from "../common/CountUp";
 
-const DashboardView = ({ active }: ViewProps) => {
+const DashboardView = ({ active, onOpenRankingView }: ViewProps & { onOpenRankingView?: () => void }) => {
   const [supabaseData, setSupabaseData] = useState<DeliveryDataRow[]>([]);
   const [prevSupabaseData, setPrevSupabaseData] = useState<DeliveryDataRow[]>(
     [],
@@ -44,6 +46,7 @@ const DashboardView = ({ active }: ViewProps) => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isWelcomeGuideOpen, setIsWelcomeGuideOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isBatchExporting, setIsBatchExporting] = useState(false);
   const [uploadFilesData, setUploadFilesData] = useState<{
@@ -54,6 +57,7 @@ const DashboardView = ({ active }: ViewProps) => {
   }>({});
   const [uploadDate, setUploadDate] = useState<Date | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
   const [modalData, setModalData] = useState({
     title: "",
     type: "service" as "service" | "office",
@@ -66,6 +70,7 @@ const DashboardView = ({ active }: ViewProps) => {
   const [selectedServiceFilter, setSelectedServiceFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isControlsOpen, setIsControlsOpen] = useState(true);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
 
@@ -78,6 +83,15 @@ const DashboardView = ({ active }: ViewProps) => {
   });
 
   const reportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Check for welcome guide
+    const hasSeenWelcome = localStorage.getItem("hasSeenWelcomeGuide");
+    if (!hasSeenWelcome) {
+       // Small delay to let the dashboard load first
+       setTimeout(() => setIsWelcomeGuideOpen(true), 1000);
+    }
+  }, []);
 
   const filterDisplayNames = useMemo(() => getDisplayNamesFromConfig(), []);
 
@@ -199,6 +213,42 @@ const DashboardView = ({ active }: ViewProps) => {
       fetchData(startDate, endDate);
     }
   }, [startDate, endDate, active]);
+
+  // Listen for ranking page data requests
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === "REQUEST_RANKING_DATA" && event.source) {
+        (event.source as Window).postMessage(
+          {
+            type: "RANKING_DATA",
+            currentData: supabaseData,
+            prevData: prevSupabaseData,
+            selectedFilter,
+            selectedServiceFilter,
+          },
+          "*"
+        );
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [supabaseData, prevSupabaseData, selectedFilter, selectedServiceFilter]);
+
+  // Scroll to top logic
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handleUploadFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -904,30 +954,21 @@ const DashboardView = ({ active }: ViewProps) => {
 
         <div className="space-y-4 pt-4 px-4 sm:px-6 lg:px-8 max-w-full mx-auto relative z-10 transition-all duration-300">
           {/* Header Section */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 relative overflow-hidden group">
+          {/* Header Section - Sticky */}
+          <div className="sticky top-4 z-40 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white/90 backdrop-blur-xl p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 relative overflow-hidden group transition-all duration-300">
             <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-blue-500 to-indigo-600"></div>
-            <div className="space-y-3 pl-2">
-              <h2 className="text-2xl md:text-3xl font-bold text-slate-800 leading-snug">
-                รายงานประสิทธิภาพการนำจ่าย และ การโทรนัดหมายนำจ่าย EMS ในประเทศของที่ทำการในสังกัด ปข.6{" "}
-                <span className="text-red-600">
+            
+            {/* Title and Date */}
+            <div className="space-y-2 pl-2">
+              <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-snug">
+                รายงานประสิทธิภาพการนำจ่าย EMS{" "}
+                <span className="text-blue-600">
                   ({filterDisplayNames[selectedFilter]})
                 </span>
               </h2>
-              <div className="flex items-center gap-3 mt-4">
-                <span className="flex items-center gap-2 text-sm text-slate-500 font-medium px-4 py-1.5 rounded-full bg-slate-50 border border-slate-100">
-                  <svg
-                    className="w-4 h-4 text-slate-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-2 text-xs text-slate-500 font-medium px-3 py-1 rounded-full bg-slate-50 border border-slate-100">
+                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                   {formatDateToISO(startDate) === formatDateToISO(endDate)
                     ? formatToFullThaiDate(startDate)
                     : `${formatToFullThaiDate(startDate)} - ${formatToFullThaiDate(endDate)}`}
@@ -935,93 +976,60 @@ const DashboardView = ({ active }: ViewProps) => {
               </div>
             </div>
 
-            {/* Control Buttons */}
-            {!isBatchExporting && isControlsOpen && (
-              <div className="flex gap-2 items-center">
-                <button
-                  onClick={handleBatchExport}
-                  className="group/btn relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white text-xs font-bold flex items-center gap-2 px-3 py-2 rounded-lg shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5 active:scale-95"
-                >
-                  <div className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover/btn:animate-shimmer"></div>
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+            {/* Combined Actions */}
+            <div className="flex gap-2 items-center flex-wrap justify-end">
+              {!isBatchExporting && isControlsOpen && (
+                <>
+                  <button
+                    onClick={handleBatchExport}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 hover:-translate-y-0.5 active:scale-95"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                    />
-                  </svg>
-                  <span>บันทึกรูปภาพ</span>
-                </button>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span>Capture รายงาน</span>
+                  </button>
 
-                <button
-                  onClick={() => setIsControlsOpen(!isControlsOpen)}
-                  className="bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700 text-xs font-bold flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 shadow-sm transition-all hover:-translate-y-0.5 active:scale-95"
-                >
-                  {isControlsOpen ? "ซ่อนตัวกรอง" : "แสดงตัวกรอง"}
-                  <svg
-                    className={`w-3.5 h-3.5 transition-transform duration-300 ${isControlsOpen ? "rotate-180" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              {!isControlsOpen && !isBatchExporting && (
-                <button
-                  onClick={() => setIsControlsOpen(true)}
-                  className="bg-white p-3 rounded-xl shadow-md text-slate-400 hover:text-blue-600 hover:-translate-y-1 transition-all"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
+                  {onOpenRankingView && (
+                    <button
+                      onClick={() => {
+                        onOpenRankingView();
+                        setTimeout(() => {
+                          const rankingWindow = window.open("/ranking", "_blank");
+                          if (rankingWindow) {
+                            setTimeout(() => {
+                              rankingWindow.postMessage({
+                                type: "RANKING_DATA",
+                                currentData: supabaseData,
+                                prevData: prevSupabaseData,
+                                selectedFilter,
+                                selectedServiceFilter,
+                              }, "*");
+                            }, 500);
+                          }
+                        }, 100);
+                      }}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:scale-95"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z"/></svg>
+                      <span>อันดับ</span>
+                    </button>
+                  )}
+                </>
               )}
 
-              {/* Logout Button */}
+              <button
+                onClick={() => setIsControlsOpen(!isControlsOpen)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-600 hover:text-blue-600 border border-slate-200 hover:border-blue-400 hover:bg-blue-50 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95"
+              >
+                {isControlsOpen ? "ซ่อน" : "ตัวกรอง"}
+                <svg className={`w-4 h-4 transition-transform ${isControlsOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+
               <button
                 onClick={handleLogout}
-                className="bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 p-3 rounded-xl shadow-md transition-all hover:-translate-y-1 group relative"
+                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
                 title="ออกจากระบบ"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
               </button>
             </div>
           </div>
@@ -1033,10 +1041,50 @@ const DashboardView = ({ active }: ViewProps) => {
                 {/* Date Controls */}
                 <div className="lg:col-span-1 space-y-6">
                   <div>
-                    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                      ช่วงเวลาข้อมูล
-                    </label>
+                    <div className="flex justify-between items-center mb-3">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                        ช่วงเวลาข้อมูล
+                      </label>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            const end = new Date();
+                            const start = new Date();
+                            start.setDate(end.getDate() - 7);
+                            setStartDate(start);
+                            setEndDate(end);
+                          }}
+                          className="px-3 py-1 text-[10px] font-bold bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-full border border-slate-200 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                        >
+                          7 วัน
+                        </button>
+                        <button
+                          onClick={() => {
+                            const date = new Date();
+                            const start = new Date(date.getFullYear(), date.getMonth(), 1);
+                            const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                            setStartDate(start);
+                            setEndDate(end);
+                          }}
+                          className="px-3 py-1 text-[10px] font-bold bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-full border border-slate-200 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                        >
+                          เดือนนี้
+                        </button>
+                        <button
+                          onClick={() => {
+                            const date = new Date();
+                            const start = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+                            const end = new Date(date.getFullYear(), date.getMonth(), 0);
+                            setStartDate(start);
+                            setEndDate(end);
+                          }}
+                          className="px-3 py-1 text-[10px] font-bold bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-full border border-slate-200 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                        >
+                          เดือนก่อน
+                        </button>
+                      </div>
+                    </div>
                     <div className="flex gap-3">
                       <div className="w-1/2 relative group">
                         <DatePicker
@@ -1176,6 +1224,7 @@ const DashboardView = ({ active }: ViewProps) => {
                 currentData={supabaseData}
                 prevData={prevSupabaseData}
                 selectedFilter={selectedFilter}
+                selectedServiceFilter={selectedServiceFilter}
               />
               
               {/* Charts Grid */}
@@ -1208,7 +1257,7 @@ const DashboardView = ({ active }: ViewProps) => {
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
                 <KPICard
                   title="อัตราความสำเร็จ"
-                  value={`${summaryKPIs.successRate.toFixed(1)}%`}
+                  value={<CountUp end={summaryKPIs.successRate} decimals={1} suffix="%" />}
                   type="success"
                   highlight
                   trend={getComparison(
@@ -1232,7 +1281,7 @@ const DashboardView = ({ active }: ViewProps) => {
                 />
                 <KPICard
                   title="นำจ่ายสำเร็จ (M)"
-                  value={summaryKPIs.M.toLocaleString()}
+                  value={<CountUp end={summaryKPIs.M} />}
                   type="success"
                   trend={getComparison(summaryKPIs.M, prevKPIs.M)}
                   comparisonLabel={comparisonLabel}
@@ -1254,7 +1303,7 @@ const DashboardView = ({ active }: ViewProps) => {
                 />
                 <KPICard
                   title="นำจ่ายไม่สำเร็จ (O)"
-                  value={summaryKPIs.O.toLocaleString()}
+                  value={<CountUp end={summaryKPIs.O} />}
                   type="danger"
                   inverseTrend={true}
                   trend={{
@@ -1287,7 +1336,7 @@ const DashboardView = ({ active }: ViewProps) => {
                 />
                 <KPICard
                   title="เตรียมการนำจ่าย (H)"
-                  value={summaryKPIs.H.toLocaleString()}
+                  value={<CountUp end={summaryKPIs.H} />}
                   type="primary"
                   trend={getComparison(summaryKPIs.H, prevKPIs.H)}
                   comparisonLabel={comparisonLabel}
@@ -1309,14 +1358,14 @@ const DashboardView = ({ active }: ViewProps) => {
                 />
                 <KPICard
                   title="รายงานผล (K)"
-                  value={summaryKPIs.K.toLocaleString()}
+                  value={<CountUp end={summaryKPIs.K} />}
                   trend={getComparison(summaryKPIs.K, prevKPIs.K)}
                   comparisonLabel={comparisonLabel}
                   type="primary"
                 />
                 <KPICard
                   title="ไม่รายงานผล (I)"
-                  value={summaryKPIs.I.toLocaleString()}
+                  value={<CountUp end={summaryKPIs.I} />}
                   trend={{
                     diff: summaryKPIs.I - prevKPIs.I,
                     direction:
@@ -1360,7 +1409,7 @@ const DashboardView = ({ active }: ViewProps) => {
               <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <KPICard
                   title="โทรสำเร็จ (%)"
-                  value={`${currentCallSuccessRate.toFixed(1)}%`}
+                  value={<CountUp end={currentCallSuccessRate} decimals={1} suffix="%" />}
                   type="success"
                   highlight
                   trend={getComparison(
@@ -1371,7 +1420,7 @@ const DashboardView = ({ active }: ViewProps) => {
                 />
                 <KPICard
                   title="โทรสำเร็จ (ชิ้น)"
-                  value={(summaryKPIs.Q || 0).toLocaleString()}
+                  value={<CountUp end={summaryKPIs.Q || 0} />}
                   type="success"
                   trend={getComparison(summaryKPIs.Q || 0, prevKPIs.Q || 0)}
                   comparisonLabel={comparisonLabel}
@@ -1393,7 +1442,7 @@ const DashboardView = ({ active }: ViewProps) => {
                 />
                 <KPICard
                   title="โทรไม่สำเร็จ (%)"
-                  value={`${currentCallFailRate.toFixed(1)}%`}
+                  value={<CountUp end={currentCallFailRate} decimals={1} suffix="%" />}
                   type="danger"
                   highlight
                   inverseTrend={true}
@@ -1412,7 +1461,7 @@ const DashboardView = ({ active }: ViewProps) => {
                 />
                 <KPICard
                   title="โทรไม่สำเร็จ (ชิ้น)"
-                  value={(summaryKPIs.S || 0).toLocaleString()}
+                  value={<CountUp end={summaryKPIs.S || 0} />}
                   type="danger"
                   inverseTrend={true}
                   trend={{
@@ -1511,6 +1560,46 @@ const DashboardView = ({ active }: ViewProps) => {
         onClose={() => setIsModalOpen(false)}
         data={modalData}
       />
+
+      <WelcomeGuide 
+        isOpen={isWelcomeGuideOpen}
+        onClose={() => setIsWelcomeGuideOpen(false)}
+      />
+
+      {/* Back to Top Button */}
+      <button
+        onClick={scrollToTop}
+        className={`fixed bottom-8 right-8 z-50 p-4 bg-slate-900 text-white rounded-full shadow-lg transition-all duration-500 hover:bg-blue-600 hover:shadow-blue-500/30 active:scale-90 group ${
+          showScrollTop ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0"
+        }`}
+      >
+        <svg 
+          className="w-6 h-6 group-hover:-translate-y-1 transition-transform duration-300" 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+      </button>
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 20px;
+          border: 3px solid transparent;
+          background-clip: content-box;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: #94a3b8;
+        }
+      `}</style>
     </div>
   );
 };

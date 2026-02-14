@@ -52,7 +52,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const DeliveryTrendChart = ({ trendData }: TrendChartsProps) => (
-  <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 h-72 relative overflow-hidden">
+  <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 h-72 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
     <div className="flex items-center gap-3 mb-6">
       <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
@@ -105,7 +105,7 @@ export const DeliveryTrendChart = ({ trendData }: TrendChartsProps) => (
 );
 
 export const CallTrendChart = ({ trendData }: TrendChartsProps) => (
-  <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 h-72 relative overflow-hidden">
+  <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 h-72 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 to-indigo-500"></div>
     <div className="flex items-center gap-3 mb-6">
       <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">

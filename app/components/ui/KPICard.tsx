@@ -5,7 +5,7 @@ type TrendType = "success" | "danger" | "primary" | "warning" | "neutral";
 
 interface KPICardProps {
   title: string;
-  value: string | number;
+  value: string | number | React.ReactNode;
   subValue?: string;
   type?: TrendType;
   icon?: React.ReactNode;
