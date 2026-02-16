@@ -33,7 +33,7 @@ import DailyInsights from "../dashboard/DailyInsights";
 import WelcomeGuide from "../dashboard/WelcomeGuide";
 import CountUp from "../common/CountUp";
 
-const DashboardView = ({ active, onOpenRankingView }: ViewProps & { onOpenRankingView?: () => void }) => {
+const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: ViewProps & { onOpenRankingView?: () => void, onOpenComparisonView?: () => void }) => {
   const [supabaseData, setSupabaseData] = useState<DeliveryDataRow[]>([]);
   const [prevSupabaseData, setPrevSupabaseData] = useState<DeliveryDataRow[]>(
     [],
@@ -1014,6 +1014,16 @@ const DashboardView = ({ active, onOpenRankingView }: ViewProps & { onOpenRankin
                     </button>
                   )}
                 </>
+              )}
+
+              {onOpenComparisonView && (
+                  <button
+                      onClick={onOpenComparisonView}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 hover:-translate-y-0.5 active:scale-95"
+                  >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                      <span>เปรียบเทียบ</span>
+                  </button>
               )}
 
               <button
