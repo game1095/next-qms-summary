@@ -51,6 +51,7 @@ export default function Home() {
     <DashboardView 
       active={activeView === "dashboard"} 
       onOpenRankingView={() => window.open("/ranking", "_blank")}
+      onOpenComparisonView={() => window.open("/comparison", "_blank")}
     />
   );
 }
