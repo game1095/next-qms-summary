@@ -184,7 +184,7 @@ const LoginView = () => {
 
             <div className="mt-8 text-center border-t border-slate-100 pt-6">
               <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
-                Developed by <span className="text-indigo-600 font-bold">งานรับฝากและส่งต่อ ปข.6 <3</span>
+                Developed by <span className="text-indigo-600 font-bold">งานรับฝากและส่งต่อ ปข.6</span>
               </p>
             </div>
           </div>
