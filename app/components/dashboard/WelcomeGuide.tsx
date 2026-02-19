@@ -136,7 +136,7 @@ const WelcomeGuide: React.FC<WelcomeGuideProps> = ({ isOpen, onClose }) => {
             
             <div className="text-center pt-2">
               <p className="text-[10px] text-slate-400 font-medium">
-                Developed by <span className="text-indigo-500 font-bold">Megamind</span>
+                Developed by <span className="text-indigo-500 font-bold">งานรับฝากและส่งต่อ ปข.6</span>
               </p>
             </div>
           </div>
