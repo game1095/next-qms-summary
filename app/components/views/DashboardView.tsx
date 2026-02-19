@@ -967,7 +967,7 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                 </span>
               </h2>
               <div className="flex items-center gap-3">
-                <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-snug text-red-600">
+                <h2 className="text-xl md:text-2xl font-bold leading-snug text-red-600">
                     {formatDateToISO(startDate) === formatDateToISO(endDate)
                       ? formatToFullThaiDate(startDate)
                       : `${formatToFullThaiDate(startDate)} - ${formatToFullThaiDate(endDate)}`}
