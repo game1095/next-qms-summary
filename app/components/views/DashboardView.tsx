@@ -962,7 +962,7 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
             <div className="space-y-2 pl-2">
               <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-snug">
                 รายงานประสิทธิภาพการนำจ่าย และ ประสิทธิภาพการโทร EMS{" "}
-                <span className="text-blue-600">
+                <span className="text-red-600">
                   ({filterDisplayNames[selectedFilter]})
                 </span>
               </h2>
