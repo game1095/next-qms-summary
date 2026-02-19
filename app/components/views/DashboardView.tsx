@@ -972,7 +972,6 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                     {formatDateToISO(startDate) === formatDateToISO(endDate)
                       ? formatToFullThaiDate(startDate)
                       : `${formatToFullThaiDate(startDate)} - ${formatToFullThaiDate(endDate)}`}
-                  </span>
                 </h2>
               </div>
             </div>
