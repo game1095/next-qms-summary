@@ -2,45 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { Session } from "@supabase/supabase-js";
 import RankingView from "../components/views/RankingView";
-import LoginView from "../components/views/LoginView";
 import { DeliveryDataRow } from "../types";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-
-const formatDateToISO = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
+import { formatDateToISO } from "../../lib/utils";
 
 export default function RankingPage() {
-  const [session, setSession] = useState<Session | null>(null);
   const [supabaseData, setSupabaseData] = useState<DeliveryDataRow[]>([]);
   const [prevSupabaseData, setPrevSupabaseData] = useState<DeliveryDataRow[]>([]);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setIsAuthChecking(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setIsAuthChecking(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
 
   // Initialize with yesterday's date
   useEffect(() => {
@@ -52,10 +25,10 @@ export default function RankingPage() {
 
   // Fetch data when dates change
   useEffect(() => {
-    if (startDate && endDate && session) {
+    if (startDate && endDate) {
       fetchData();
     }
-  }, [startDate, endDate, session]);
+  }, [startDate, endDate]);
 
   const fetchData = async () => {
     if (!startDate || !endDate) return;
@@ -119,22 +92,6 @@ export default function RankingPage() {
       setIsLoading(false);
     }
   };
-
-  if (isAuthChecking) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-        <div className="relative w-16 h-16 mb-4">
-          <div className="absolute top-0 left-0 w-full h-full border-4 border-slate-200 rounded-full"></div>
-          <div className="absolute top-0 left-0 w-full h-full border-4 border-purple-500 rounded-full animate-spin border-t-transparent"></div>
-        </div>
-        <p className="text-slate-400 font-medium animate-pulse">กำลังตรวจสอบสิทธิ์...</p>
-      </div>
-    );
-  }
-
-  if (!session) {
-    return <LoginView />;
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 relative selection:bg-purple-200">
@@ -298,57 +255,6 @@ export default function RankingPage() {
         .no-scrollbar {
           -ms-overflow-style: none;
           scrollbar-width: none;
-        }
-        
-        .react-datepicker-wrapper {
-          width: auto;
-        }
-        
-        .react-datepicker {
-          font-family: inherit;
-          border-radius: 1rem;
-          border: 1px solid #e2e8f0;
-          box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-          overflow: hidden;
-        }
-        
-        .react-datepicker__header {
-          background: #f8fafc;
-          border-bottom: 1px solid #e2e8f0;
-          padding-top: 1rem;
-        }
-        
-        .react-datepicker__current-month {
-          font-weight: 800;
-          color: #1e293b;
-          margin-bottom: 0.5rem;
-        }
-        
-        .react-datepicker__day-name {
-          color: #64748b;
-          font-weight: 600;
-          width: 2.5rem;
-        }
-        
-        .react-datepicker__day {
-          width: 2.5rem;
-          line-height: 2.5rem;
-          border-radius: 0.5rem;
-          margin: 0.1rem;
-          font-weight: 500;
-        }
-        
-        .react-datepicker__day--selected {
-          background: #6366f1;
-          color: white;
-        }
-        
-        .react-datepicker__day:hover {
-          background: #eef2ff;
-        }
-        
-        .react-datepicker__triangle {
-          display: none;
         }
       `}</style>
     </div>

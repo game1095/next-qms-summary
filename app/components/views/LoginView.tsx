@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -18,6 +20,8 @@ const LoginView = () => {
     if (error) {
       setErrorMsg(error.message);
       setIsLoading(false);
+    } else {
+      window.location.href = "/"; // Force a full page reload so middleware catches the new session cookies
     }
   };
 
