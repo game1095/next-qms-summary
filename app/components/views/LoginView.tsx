@@ -36,21 +36,23 @@ const LoginView = () => {
       </div>
 
       <div className="max-w-[1200px] w-full z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-center">
-        
         {/* Left Column: Features (Hidden on small screens or stacked) */}
         <div className="lg:col-span-7 space-y-8 order-2 lg:order-1 animate-in slide-in-from-left-4 duration-700">
           <div className="space-y-4 text-center lg:text-left">
-             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/50 border border-blue-200 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2 backdrop-blur-sm">
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                QMS Dashboard 2.1
-             </div>
-             <h1 className="text-4xl lg:text-5xl font-black text-slate-800 tracking-tight leading-tight">
-               ระบบติดตามและประเมินผล <br/>
-               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">การนำจ่าย EMS</span>
-             </h1>
-             <p className="text-slate-500 text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-               แพลตฟอร์มวิเคราะห์ข้อมูลอัจฉริยะ รวบรวมสถิติ Real-time เพื่อการตัดสินใจที่แม่นยำและรวดเร็ว
-             </p>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/50 border border-blue-200 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2 backdrop-blur-sm">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+              QMS Dashboard 2.1
+            </div>
+            <h1 className="text-4xl lg:text-5xl font-black text-slate-800 tracking-tight leading-tight">
+              ระบบติดตามและประเมินผล <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+                การนำจ่าย EMS
+              </span>
+            </h1>
+            <p className="text-slate-500 text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+              แพลตฟอร์มวิเคราะห์ข้อมูลอัจฉริยะ รวบรวมสถิติ Real-time
+              เพื่อการตัดสินใจที่แม่นยำและรวดเร็ว
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -61,14 +63,14 @@ const LoginView = () => {
                 Monitoring
               </h3>
               <div className="space-y-3">
-                 <FeatureCard 
-                  icon="📊" 
-                  title="Daily Overview" 
+                <FeatureCard
+                  icon="📊"
+                  title="Daily Overview"
                   desc="ติดตามปริมาณงานและผลสำเร็จ (Success %) แบบ Real-time"
                 />
-                 <FeatureCard 
-                  icon="🗺️" 
-                  title="Geo Heatmap" 
+                <FeatureCard
+                  icon="🗺️"
+                  title="Geo Heatmap"
                   desc="เจาะลึกพื้นที่ที่มีปัญหาผ่านแผนที่ความร้อนรายจังหวัด"
                 />
               </div>
@@ -81,14 +83,14 @@ const LoginView = () => {
                 Analysis
               </h3>
               <div className="space-y-3">
-                 <FeatureCard 
-                  icon="⚖️" 
-                  title="Comparison" 
+                <FeatureCard
+                  icon="⚖️"
+                  title="Comparison"
                   desc="ตารางเปรียบเทียบผลงาน 2 ช่วงเวลาแบบเจาะลึกรายที่ทำการ"
                 />
-                 <FeatureCard 
-                  icon="🎯" 
-                  title="Performance Matrix" 
+                <FeatureCard
+                  icon="🎯"
+                  title="Performance Matrix"
                   desc="กราฟคัดกรองพื้นที่เป้าหมาย (Scatter Plot) เชิงลึก"
                 />
               </div>
@@ -96,19 +98,19 @@ const LoginView = () => {
 
             {/* Tools Section */}
             <div className="space-y-4 xl:col-span-1 md:col-span-2">
-               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <span className="w-8 h-[1px] bg-emerald-300"></span>
                 Tools
               </h3>
               <div className="space-y-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-3">
-                <FeatureCard 
-                  icon="🔍" 
-                  title="Smart Filters" 
+                <FeatureCard
+                  icon="🔍"
+                  title="Smart Filters"
                   desc="กรองข้อมูลแบบ Multi-dimension (พื้นที่, ประเภทบริการ)"
                 />
-                <FeatureCard 
-                  icon="📥" 
-                  title="Export & Report" 
+                <FeatureCard
+                  icon="📥"
+                  title="Export & Report"
                   desc="ดาวน์โหลดไฟล์ Excel (.xlsx) และรูปภาพ Presentation"
                 />
               </div>
@@ -119,8 +121,8 @@ const LoginView = () => {
         {/* Right Column: Login Form */}
         <div className="lg:col-span-5 order-1 lg:order-2">
           <div className="w-full bg-white/70 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] border border-white/50 p-8 lg:p-10 animate-in zoom-in-95 duration-700 relative overflow-hidden group">
-             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-rose-500"></div>
-            
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-rose-500"></div>
+
             <div className="text-center space-y-6 mb-8">
               <div className="relative inline-block group-hover:scale-110 transition-transform duration-500 ease-out">
                 <div className="absolute inset-0 bg-blue-500 rounded-2xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-500"></div>
@@ -140,7 +142,19 @@ const LoginView = () => {
 
             {errorMsg && (
               <div className="mb-6 bg-red-50 text-red-600 text-xs p-3 rounded-xl border border-red-100 text-center font-bold flex items-center justify-center gap-2 animate-in slide-in-from-top-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
                 {errorMsg === "Invalid login credentials"
                   ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
                   : errorMsg}
@@ -181,24 +195,61 @@ const LoginView = () => {
               >
                 {isLoading ? (
                   <>
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     กำลังตรวจสอบ...
                   </>
                 ) : (
                   <>
                     Sign In
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M14 5l7 7m0 0l-7 7m7-7H3"
+                      />
+                    </svg>
                   </>
                 )}
               </button>
             </form>
 
             <div className="mt-8 text-center border-t border-slate-100 pt-6">
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
-                Developed by <span className="text-indigo-600 font-bold">งานรับฝากและส่งต่อ ปข.6</span>
+              <p className="text-[12px] text-slate-400 font-medium uppercase tracking-widest flex items-center justify-center gap-1">
+                Made with
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-4 h-4 text-red-500 animate-pulse"
+                >
+                  <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                </svg>
+                by <span className="text-indigo-600 font-bold">Megamind</span>
               </p>
             </div>
           </div>
@@ -208,14 +259,24 @@ const LoginView = () => {
   );
 };
 
-const FeatureCard = ({ icon, title, desc }: { icon: string, title: string, desc: string }) => (
+const FeatureCard = ({
+  icon,
+  title,
+  desc,
+}: {
+  icon: string;
+  title: string;
+  desc: string;
+}) => (
   <div className="p-3 rounded-xl bg-white/60 border border-white/50 backdrop-blur-sm hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-default">
     <div className="flex gap-3 items-start">
       <div className="w-10 h-10 rounded-lg bg-blue-50 group-hover:bg-blue-600 text-blue-600 group-hover:text-white flex items-center justify-center text-xl shrink-0 transition-all duration-300 shadow-sm">
         {icon}
       </div>
       <div>
-        <h4 className="font-bold text-slate-800 text-sm group-hover:text-blue-700 transition-colors">{title}</h4>
+        <h4 className="font-bold text-slate-800 text-sm group-hover:text-blue-700 transition-colors">
+          {title}
+        </h4>
         <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">{desc}</p>
       </div>
     </div>
