@@ -29,10 +29,16 @@ const PerformanceTable = ({
 
   const getBadgeClass = (rate: number) => {
     if (rate >= 98)
-      return "text-emerald-600 bg-emerald-50";
+      return "text-emerald-700 bg-emerald-50 border-emerald-200/50";
     if (rate >= 95)
-      return "text-yellow-600 bg-yellow-50";
-    return "text-rose-600 bg-rose-50";
+      return "text-yellow-700 bg-yellow-50 border-yellow-200/50";
+    return "text-rose-700 bg-rose-50 border-rose-200/50";
+  };
+
+  const getProgressColor = (rate: number) => {
+    if (rate >= 98) return "bg-emerald-500";
+    if (rate >= 95) return "bg-yellow-400";
+    return "bg-rose-500";
   };
 
   return (
@@ -114,15 +120,16 @@ const PerformanceTable = ({
               return (
                 <tr
                   key={compositeKey}
-                  className="group hover:bg-slate-50/80 transition-all duration-200"
+                  onClick={() => onShowDetails(compositeKey)}
+                  className="group hover:bg-blue-50/50 hover:shadow-md cursor-pointer transition-all duration-200"
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700 sticky left-0 z-10 bg-white group-hover:bg-slate-50/80 transition-colors border-r border-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                    <button
-                      onClick={() => onShowDetails(compositeKey)}
-                      className="hover:text-blue-600 hover:translate-x-1 transition-all flex items-center gap-2"
-                    >
-                      {keyF}
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700 sticky left-0 z-10 bg-white group-hover:bg-blue-50/50 transition-colors border-r border-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                    <div className="flex items-center gap-2 text-slate-700 group-hover:text-blue-700 transition-colors">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1">
+                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"></path></svg>
+                      </span>
+                      <span className="transform group-hover:translate-x-1 transition-transform">{keyF}</span>
+                    </div>
                   </td>
                   {/* Delivery Columns */}
                   <td className="px-6 py-4 whitespace-nowrap text-slate-600 text-right tabular-nums bg-emerald-50/5 group-hover:bg-emerald-50/20">
@@ -138,12 +145,18 @@ const PerformanceTable = ({
                     {sums.sumM.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right border-r border-slate-100 bg-emerald-50/5 group-hover:bg-emerald-50/20">
-                    <div className="flex justify-end">
+                    <div className="flex flex-col items-end gap-1.5 w-full">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold ${getBadgeClass(displaySuccessRate)}`}
+                        className={`px-2.5 py-0.5 rounded-md border text-xs font-bold ${getBadgeClass(displaySuccessRate)}`}
                       >
                         {rowSuccessRate.toFixed(1)}%
                       </span>
+                      <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full ${getProgressColor(displaySuccessRate)}`} 
+                          style={{ width: `${Math.min(100, Math.max(0, rowSuccessRate))}%` }}
+                        />
+                      </div>
                     </div>
                   </td>
                   {/* Call Columns */}
@@ -151,12 +164,18 @@ const PerformanceTable = ({
                     {sums.sumQ.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right bg-purple-50/5 group-hover:bg-purple-50/20">
-                    <div className="flex justify-end">
+                    <div className="flex flex-col items-end gap-1.5 w-full">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold ${getBadgeClass(displayCallRate)}`}
+                        className={`px-2.5 py-0.5 rounded-md border text-xs font-bold ${getBadgeClass(displayCallRate)}`}
                       >
                         {callSuccessRate.toFixed(1)}%
                       </span>
+                      <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full ${getProgressColor(displayCallRate)}`} 
+                          style={{ width: `${Math.min(100, Math.max(0, callSuccessRate))}%` }}
+                        />
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-slate-400 text-right tabular-nums bg-purple-50/5 group-hover:bg-purple-50/20">
@@ -187,21 +206,27 @@ const PerformanceTable = ({
                 {summaryKPIs.M.toLocaleString()}
               </td>
               <td className="px-6 py-5 whitespace-nowrap text-right">
-                <div className="flex justify-end">
+                <div className="flex flex-col items-end gap-2 w-full">
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-extrabold ${parseFloat(summaryKPIs.successRate.toFixed(1)) >= 98 ? "bg-emerald-500 text-white" : parseFloat(summaryKPIs.successRate.toFixed(1)) >= 95 ? "bg-yellow-400 text-black" : "bg-rose-500 text-white"}`}
+                    className={`px-3 py-1 rounded-lg border shadow-sm text-sm font-black ${parseFloat(summaryKPIs.successRate.toFixed(1)) >= 98 ? "bg-emerald-500 text-white border-emerald-600" : parseFloat(summaryKPIs.successRate.toFixed(1)) >= 95 ? "bg-yellow-400 text-slate-900 border-yellow-500" : "bg-rose-500 text-white border-rose-600"}`}
                   >
                     {summaryKPIs.successRate.toFixed(1)}%
                   </span>
+                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full ${getProgressColor(parseFloat(summaryKPIs.successRate.toFixed(1)))}`} 
+                      style={{ width: `${Math.min(100, Math.max(0, summaryKPIs.successRate))}%` }}
+                    />
+                  </div>
                 </div>
               </td>
               <td className="px-6 py-5 whitespace-nowrap text-right tabular-nums text-slate-900">
                 {(summaryKPIs.Q || 0).toLocaleString()}
               </td>
               <td className="px-6 py-5 whitespace-nowrap text-right">
-                <div className="flex justify-end">
+                <div className="flex flex-col items-end gap-2 w-full">
                   <span
-                   className={`px-3 py-1 rounded-full text-xs font-extrabold ${parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)) >= 98 ? "bg-emerald-500 text-white" : parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)) >= 95 ? "bg-yellow-400 text-black" : "bg-rose-500 text-white"}`}
+                   className={`px-3 py-1 rounded-lg border shadow-sm text-sm font-black ${parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)) >= 98 ? "bg-emerald-500 text-white border-emerald-600" : parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)) >= 95 ? "bg-yellow-400 text-slate-900 border-yellow-500" : "bg-rose-500 text-white border-rose-600"}`}
                   >
                     {(summaryKPIs.H > 0
                       ? (summaryKPIs.Q / summaryKPIs.H) * 100
@@ -209,6 +234,12 @@ const PerformanceTable = ({
                     ).toFixed(1)}
                     %
                   </span>
+                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full ${getProgressColor(parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)))}`} 
+                      style={{ width: `${Math.min(100, Math.max(0, summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0))}%` }}
+                    />
+                  </div>
                 </div>
               </td>
               <td className="px-6 py-5 whitespace-nowrap text-right tabular-nums text-slate-400">

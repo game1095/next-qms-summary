@@ -5,6 +5,8 @@ import ReactDatePicker from "react-datepicker";
 import KPICard from "../ui/KPICard";
 import CountUp from "../common/CountUp";
 import FilterButton from "../ui/FilterButton";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,11 +14,12 @@ import {
   BarElement,
   LineElement,
   PointElement,
+  ScatterController,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Bar, Chart as ReactChart } from 'react-chartjs-2';
+import { Bar, Scatter, Chart as ReactChart } from 'react-chartjs-2';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 ChartJS.register(
@@ -25,6 +28,7 @@ ChartJS.register(
   BarElement,
   LineElement,
   PointElement,
+  ScatterController,
   Title,
   Tooltip,
   Legend,
@@ -271,6 +275,57 @@ const ComparisonView = ({
     });
   }, [baseComparisonList, searchTerm, sortConfig]);
 
+  const formatDateForApi = (date: Date | null) => {
+    if (!date) return "";
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const exportToExcel = () => {
+    if (!comparisonList || comparisonList.length === 0) return;
+
+    // Transform data for Excel
+    const excelData = comparisonList.map((item, index) => ({
+      'ลำดับ (No.)': index + 1,
+      'ที่ทำการ (Office)': item.name,
+      'กลุ่ม (Group)': item.group,
+      [`ปริมาณงาน ${dateA ? dateA.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'อดีต'} (ชิ้น)`]: item.volA,
+      [`% สำเร็จ ${dateA ? dateA.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'อดีต'}`]: item.successRateA.toFixed(2) + '%',
+      [`ปริมาณงาน ${dateB ? dateB.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'ปัจจุบัน'} (ชิ้น)`]: item.volB,
+      [`% สำเร็จ ${dateB ? dateB.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'ปัจจุบัน'}`]: item.successRateB.toFixed(2) + '%',
+      'ส่วนต่างปริมาณงาน (ชิ้น)': item.diffVol > 0 ? `+${item.diffVol}` : item.diffVol.toString(),
+      'ส่วนต่าง % สำเร็จ': item.diffSuccess > 0 ? `+${item.diffSuccess.toFixed(2)}%` : `${item.diffSuccess.toFixed(2)}%`,
+      [`% โทรสำเร็จ ${dateA ? dateA.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'อดีต'}`]: item.callRateA.toFixed(2) + '%',
+      [`% โทรสำเร็จ ${dateB ? dateB.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'ปัจจุบัน'}`]: item.callRateB.toFixed(2) + '%',
+      'ส่วนต่าง % โทร': item.diffCall > 0 ? `+${item.diffCall.toFixed(2)}%` : `${item.diffCall.toFixed(2)}%`
+    }));
+
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+    // Auto-size columns
+    const maxWidths = Object.keys(excelData[0]).map(k => ({
+      wch: Math.max(
+        k.length,
+        ...excelData.map(row => (row as any)[k] ? (row as any)[k].toString().length : 0)
+      ) + 2
+    }));
+    worksheet['!cols'] = maxWidths;
+
+    // Create workbook and add sheet
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Comparison Report');
+
+    // Generate buffer and save
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+    
+    const fileName = `Performance_Comparison_${formatDateForApi(new Date())}.xlsx`;
+    saveAs(blob, fileName);
+  };
+
   // --- Chart Aggregations ---
   const isSingleGroup = useMemo(() => {
       const uniqueGroups = new Set(comparisonList.map(item => item.group));
@@ -387,7 +442,8 @@ const ComparisonView = ({
       onDateAChange(start);
   };
 
-  const getDiffColor = (diff: number, inverse = false) => {
+  const getDiffColor = (diff: number, inverse = false, neutral = false) => {
+      if (neutral) return "text-slate-500";
       if (Math.abs(diff) < 0.1) return "text-slate-400";
       if (diff > 0) return inverse ? "text-rose-600" : "text-emerald-600";
       return inverse ? "text-emerald-600" : "text-rose-600";
@@ -480,13 +536,24 @@ const ComparisonView = ({
                 </div>
             </div>
             
-            <button
-                onClick={onRefresh}
-                disabled={isLoading}
-                className="flex items-center gap-2 px-6 py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700 active:scale-95 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {isLoading ? "กำลังโหลด..." : "วิเคราะห์ข้อมูล"}
-            </button>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
+                <button
+                    onClick={onRefresh}
+                    disabled={isLoading}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700 active:scale-95 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                    {isLoading ? "กำลังโหลด..." : "วิเคราะห์ข้อมูล"}
+                </button>
+                <button
+                    onClick={exportToExcel}
+                    disabled={isLoading || comparisonList.length === 0}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold active:scale-95 transition-all shadow-sm border border-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    title="ดาวน์โหลดเป็นไฟล์ Excel"
+                >
+                    <span className="text-xl">📊</span>
+                    <span>ดาวน์โหลด Report</span>
+                </button>
+            </div>
         </div>
 
         {/* --- Filters --- */}
@@ -502,7 +569,7 @@ const ComparisonView = ({
                     active={selectedFilter === "all"}
                     onClick={() => setSelectedFilter("all")}
                     >
-                    ทุกจังหวัด
+                    ทุกที่ทำการ
                     </FilterButton>
                     {CURRENT_CONFIG.provinces.map((province) => (
                     <FilterButton
@@ -743,24 +810,321 @@ const ComparisonView = ({
       )}
 
       {/* --- Tab Switcher --- */}
-      <div className="flex items-center gap-2 mb-6 bg-slate-100 p-1 rounded-xl w-fit">
-          <button
-            onClick={() => setActiveTab('table')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'table' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-              📄 ตารางเปรียบเทียบ
-          </button>
-          <button
-            onClick={() => setActiveTab('chart')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'chart' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-              📊 กราฟสรุปผล
-          </button>
+      <div className="flex justify-center mb-10 w-full relative z-10 transition-all slide-up">
+          <div className="inline-flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100/80 border border-slate-200/60 shadow-inner backdrop-blur-sm">
+              <button
+                onClick={() => setActiveTab('table')}
+                className={`
+                  flex items-center gap-3 px-8 py-3.5 rounded-xl font-bold transition-all duration-300
+                  ${activeTab === 'table' 
+                    ? 'bg-white text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.06)] scale-100 ring-1 ring-slate-200/50' 
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 scale-95 opacity-80'
+                  }
+                `}
+              >
+                  <span className="text-xl">📄</span> 
+                  <span className="tracking-wide">ตารางเปรียบเทียบ</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('chart')}
+                className={`
+                  flex items-center gap-3 px-8 py-3.5 rounded-xl font-bold transition-all duration-300
+                  ${activeTab === 'chart' 
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_8px_16px_rgba(59,130,246,0.3)] scale-100' 
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 scale-95 opacity-80'
+                  }
+                `}
+              >
+                  <span className="text-xl">📊</span> 
+                  <span className="tracking-wide">กราฟสรุปผลเชิงลึก</span>
+              </button>
+          </div>
       </div>
 
       {/* --- Chart View (Executive Dashboard) --- */}
       {activeTab === 'chart' && !isLoading && (
         <div className="flex flex-col gap-8 mb-8 slide-up delay-200">
+            {/* --- Advanced Analytical Highlights --- */}
+            {!isLoading && comparisonList.length > 0 && (
+                <div className="flex flex-col gap-6 slide-up delay-100">
+                    {/* Feature 1: Top Performers & Need Attention Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Most Improved */}
+                        {(() => {
+                            const mostImproved = comparisonList.slice().sort((a, b) => b.diffSuccess - a.diffSuccess)[0];
+                            if (!mostImproved || mostImproved.diffSuccess <= 0) return null;
+                            return (
+                                <div className="bg-gradient-to-br from-emerald-50 to-white rounded-3xl p-6 border border-emerald-100 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow">
+                                    <div className="bg-emerald-100 p-3 rounded-2xl flex-shrink-0">
+                                        <div className="text-2xl">🏆</div>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="text-emerald-800 font-bold mb-1">พัฒนาการยอดเยี่ยม (Most Improved)</h4>
+                                        <p className="text-slate-600 font-bold text-lg mb-2">{mostImproved.name} <span className="text-sm font-normal text-slate-500 ml-1">({mostImproved.group})</span></p>
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs text-slate-500 uppercase tracking-widest font-bold">จากเดิม</span>
+                                                <span className="text-slate-700 font-bold">{mostImproved.successRateA.toFixed(1)}%</span>
+                                            </div>
+                                            <div className="text-emerald-300">➜</div>
+                                            <div className="flex flex-col">
+                                                <span className="text-xs text-slate-500 uppercase tracking-widest font-bold">ปัจจุบัน</span>
+                                                <span className="text-emerald-700 font-black text-xl">{mostImproved.successRateB.toFixed(1)}%</span>
+                                            </div>
+                                            <div className="ml-auto bg-emerald-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-sm">
+                                                ▲ +{mostImproved.diffSuccess.toFixed(1)}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {/* Critical Watch */}
+                        {(() => {
+                            const criticalWatch = comparisonList.slice().sort((a, b) => a.diffSuccess - b.diffSuccess)[0];
+                            if (!criticalWatch || criticalWatch.diffSuccess >= 0) return null;
+                            return (
+                                <div className="bg-gradient-to-br from-rose-50 to-white rounded-3xl p-6 border border-rose-100 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow">
+                                    <div className="bg-rose-100 p-3 rounded-2xl flex-shrink-0">
+                                        <div className="text-2xl">🚨</div>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="text-rose-800 font-bold mb-1">พื้นที่เฝ้าระวัง (Critical Watch)</h4>
+                                        <p className="text-slate-600 font-bold text-lg mb-2">{criticalWatch.name} <span className="text-sm font-normal text-slate-500 ml-1">({criticalWatch.group})</span></p>
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs text-slate-500 uppercase tracking-widest font-bold">จากเดิม</span>
+                                                <span className="text-slate-700 font-bold">{criticalWatch.successRateA.toFixed(1)}%</span>
+                                            </div>
+                                            <div className="text-rose-300">➜</div>
+                                            <div className="flex flex-col">
+                                                <span className="text-xs text-slate-500 uppercase tracking-widest font-bold">ปัจจุบัน</span>
+                                                <span className="text-rose-700 font-black text-xl">{criticalWatch.successRateB.toFixed(1)}%</span>
+                                            </div>
+                                            <div className="ml-auto bg-rose-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-sm">
+                                                ▼ {criticalWatch.diffSuccess.toFixed(1)}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+
+                    {/* Advanced Charts Grid */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        {/* Feature 2: Scatter Plot Matrix (Delivery Success) */}
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0 xl:col-span-1">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-bl-[100px] -z-10 group-hover:bg-blue-100/50 transition-colors"></div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
+                                🌌 เมทริกซ์นำจ่ายสำเร็จ (Success Matrix)
+                            </h3>
+                            <p className="text-sm text-slate-500 mb-4">ความสัมพันธ์ระหว่าง 'ปริมาณงาน (ชิ้น)' และ '% นำจ่ายสำเร็จ' ประจำวันที่ <strong>{dateB ? dateB.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'ล่าสุด'}</strong></p>
+                            
+                            <div className="flex flex-wrap items-center gap-2 mb-4">
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-bold text-emerald-700">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                    ดีเยี่ยม (≥98%)
+                                </div>
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-50 border border-yellow-100 rounded-full text-xs font-bold text-yellow-700">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+                                    ดี (95-97.9%)
+                                </div>
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full text-xs font-bold text-rose-700">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                                    ต้องปรับปรุง (&lt;95%)
+                                </div>
+                            </div>
+
+                            <div className="h-[400px] w-full mt-auto">
+                                <ReactChart
+                                    type="scatter"
+                                    data={{
+                                        datasets: [
+                                            {
+                                                type: 'scatter' as const,
+                                                label: 'ที่ทำการ (Office)',
+                                                data: comparisonList.map(item => ({
+                                                    x: item.volB,
+                                                    y: item.successRateB,
+                                                    itemName: item.name,
+                                                    itemGroup: item.group
+                                                })),
+                                                backgroundColor: comparisonList.map(item => 
+                                                    item.successRateB >= 98 ? 'rgba(16, 185, 129, 0.6)' : 
+                                                    item.successRateB >= 95 ? 'rgba(250, 204, 21, 0.8)' : 'rgba(244, 63, 94, 0.6)'
+                                                ),
+                                                borderColor: comparisonList.map(item => 
+                                                    item.successRateB >= 98 ? 'rgb(16, 185, 129)' : 
+                                                    item.successRateB >= 95 ? 'rgb(234, 179, 8)' : 'rgb(225, 29, 72)'
+                                                ),
+                                                borderWidth: 1,
+                                                pointRadius: 6,
+                                                pointHoverRadius: 9,
+                                            },
+                                            // Target Line
+                                            {
+                                                type: 'line' as const,
+                                                label: 'เป้าหมายพื้นที่ (98%)',
+                                                data: [{ x: 0, y: 98, itemName: 'Target', itemGroup: '' }, { x: Math.max(...comparisonList.map(d => d.volB)) * 1.1, y: 98, itemName: 'Target', itemGroup: '' }],
+                                                borderColor: 'rgba(16, 185, 129, 0.5)',
+                                                borderWidth: 2,
+                                                borderDash: [5, 5],
+                                                pointRadius: 0,
+                                                fill: false,
+                                            }
+                                        ]
+                                    }}
+                                    options={{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: { display: false },
+                                            tooltip: {
+                                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                                titleColor: '#1e293b',
+                                                bodyColor: '#475569',
+                                                borderColor: '#e2e8f0',
+                                                borderWidth: 1,
+                                                callbacks: {
+                                                    label: (context: any) => {
+                                                        const raw = context.raw;
+                                                        if (typeof raw.itemName === 'undefined' || raw.itemName === 'Target') return '';
+                                                        return [
+                                                            `${raw.itemName} (${raw.itemGroup})`,
+                                                            `ปริมาณงาน: ${raw.x.toLocaleString()} ชิ้น`,
+                                                            `สำเร็จ: ${raw.y.toFixed(2)}%`
+                                                        ];
+                                                    }
+                                                }
+                                            },
+                                            datalabels: { display: false }
+                                        },
+                                        scales: {
+                                            x: {
+                                                title: { display: true, text: 'ปริมาณงานนำจ่าย (ชิ้น)', color: '#64748b', font: { weight: 'bold' } },
+                                                grid: { color: '#f1f5f9' },
+                                            },
+                                            y: {
+                                                title: { display: true, text: 'อัตราการนำจ่ายสำเร็จ (%)', color: '#64748b', font: { weight: 'bold' } },
+                                                min: Math.max(0, Math.min(...comparisonList.map(d => d.successRateB)) - 5),
+                                                max: 105,
+                                                grid: { color: '#f1f5f9' },
+                                            }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Feature 3: Scatter Plot Matrix (Call Efficiency) */}
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0 xl:col-span-1">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-[100px] -z-10 group-hover:bg-indigo-100/50 transition-colors"></div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
+                                📞 เมทริกซ์การโทร (Call Matrix)
+                            </h3>
+                            <p className="text-sm text-slate-500 mb-4">ความสัมพันธ์ระหว่าง 'ปริมาณงาน (ชิ้น)' และ '% ประสิทธิภาพการโทร' ประจำวันที่ <strong>{dateB ? dateB.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'ล่าสุด'}</strong></p>
+                            
+                            <div className="flex flex-wrap items-center gap-2 mb-4">
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-bold text-emerald-700">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                    ดีเยี่ยม (≥98%)
+                                </div>
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-50 border border-yellow-100 rounded-full text-xs font-bold text-yellow-700">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+                                    ดี (95-97.9%)
+                                </div>
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full text-xs font-bold text-rose-700">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                                    ต้องปรับปรุง (&lt;95%)
+                                </div>
+                            </div>
+
+                            <div className="h-[400px] w-full mt-auto">
+                                <ReactChart
+                                    type="scatter"
+                                    data={{
+                                        datasets: [
+                                            {
+                                                type: 'scatter' as const,
+                                                label: 'ที่ทำการ (Office)',
+                                                data: comparisonList.map(item => ({
+                                                    x: item.volB,
+                                                    y: item.callRateB,
+                                                    itemName: item.name,
+                                                    itemGroup: item.group
+                                                })),
+                                                backgroundColor: comparisonList.map(item => 
+                                                    item.callRateB >= 98 ? 'rgba(16, 185, 129, 0.6)' : 
+                                                    item.callRateB >= 95 ? 'rgba(250, 204, 21, 0.8)' : 'rgba(244, 63, 94, 0.6)'
+                                                ),
+                                                borderColor: comparisonList.map(item => 
+                                                    item.callRateB >= 98 ? 'rgb(16, 185, 129)' : 
+                                                    item.callRateB >= 95 ? 'rgb(234, 179, 8)' : 'rgb(225, 29, 72)'
+                                                ),
+                                                borderWidth: 1,
+                                                pointRadius: 6,
+                                                pointHoverRadius: 9,
+                                            },
+                                            // Target Line
+                                            {
+                                                type: 'line' as const,
+                                                label: 'เป้าหมายพื้นที่ (98%)',
+                                                data: [{ x: 0, y: 98, itemName: 'Target', itemGroup: '' }, { x: Math.max(...comparisonList.map(d => d.volB)) * 1.1, y: 98, itemName: 'Target', itemGroup: '' }],
+                                                borderColor: 'rgba(16, 185, 129, 0.5)',
+                                                borderWidth: 2,
+                                                borderDash: [5, 5],
+                                                pointRadius: 0,
+                                                fill: false,
+                                            }
+                                        ]
+                                    }}
+                                    options={{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: { display: false },
+                                            tooltip: {
+                                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                                titleColor: '#1e293b',
+                                                bodyColor: '#475569',
+                                                borderColor: '#e2e8f0',
+                                                borderWidth: 1,
+                                                callbacks: {
+                                                    label: (context: any) => {
+                                                        const raw = context.raw;
+                                                        if (typeof raw.itemName === 'undefined' || raw.itemName === 'Target') return '';
+                                                        return [
+                                                            `${raw.itemName} (${raw.itemGroup})`,
+                                                            `ปริมาณงาน: ${raw.x.toLocaleString()} ชิ้น`,
+                                                            `ประสิทธิภาพการโทร: ${raw.y.toFixed(2)}%`
+                                                        ];
+                                                    }
+                                                }
+                                            },
+                                            datalabels: { display: false }
+                                        },
+                                        scales: {
+                                            x: {
+                                                title: { display: true, text: 'ปริมาณงานนำจ่าย (ชิ้น)', color: '#64748b', font: { weight: 'bold' } },
+                                                grid: { color: '#f1f5f9' },
+                                            },
+                                            y: {
+                                                title: { display: true, text: 'ประสิทธิภาพการโทร (%)', color: '#64748b', font: { weight: 'bold' } },
+                                                min: Math.max(0, Math.min(...comparisonList.map(d => d.callRateB)) - 5),
+                                                max: 105,
+                                                grid: { color: '#f1f5f9' },
+                                            }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* 2x2 Grid for Executive Charts */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* Chart 1: Volume by Province */}
@@ -1038,10 +1402,10 @@ const ComparisonView = ({
 
       {/* --- Detailed Table --- */}
       {activeTab === 'table' && (
-      <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative min-h-[500px] slide-up delay-200">
-         <div className="overflow-x-auto">
-             <table className="min-w-full text-sm">
-                 <thead>
+      <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 relative min-h-[500px] slide-up delay-200">
+         <div className="w-full">
+             <table className="min-w-full text-sm relative">
+                 <thead className="sticky top-[80px] z-40 bg-white shadow-md ring-1 ring-slate-200">
                      {/* Super Header */}
                      <tr className="bg-slate-50 border-b border-slate-200">
                          <th rowSpan={2} className="py-4 px-6 text-left font-extrabold text-slate-700 w-16 align-bottom pb-4">#</th>
@@ -1134,30 +1498,30 @@ const ComparisonView = ({
                                  {row.group}
                              </td>
                              
-                             <td className="px-2 py-4 text-center font-bold text-slate-700 bg-blue-50/10 group-hover:bg-blue-50/30">
+                             <td className="px-2 py-4 text-center font-bold text-slate-700 bg-blue-50/30 group-hover:bg-blue-100/40">
                                  {row.volA.toLocaleString()}
                              </td>
-                             <td className="px-2 py-4 text-center text-slate-700 bg-purple-50/10 group-hover:bg-purple-50/30">
+                             <td className="px-2 py-4 text-center text-slate-700 bg-purple-50/30 group-hover:bg-purple-100/40">
                                  {row.volB.toLocaleString()}
                              </td>
                              <td className={`px-2 py-4 text-center font-bold bg-slate-50/50 ${getDiffColor(row.diffVol)}`}>
                                  {row.diffVol > 0 ? "+" : ""}{row.diffVol.toLocaleString()}
                              </td>
 
-                             <td className="px-2 py-4 text-center font-bold bg-emerald-50/10 group-hover:bg-emerald-50/30 text-slate-700">
+                             <td className="px-2 py-4 text-center font-bold bg-blue-50/30 group-hover:bg-blue-100/40 text-slate-700">
                                  {row.successRateA.toFixed(1)}%
                              </td>
-                             <td className="px-2 py-4 text-center font-bold bg-purple-50/10 group-hover:bg-purple-50/30 text-slate-700">
+                             <td className="px-2 py-4 text-center font-bold bg-purple-50/30 group-hover:bg-purple-100/40 text-slate-700">
                                  {row.successRateB.toFixed(1)}%
                              </td>
                              <td className={`px-2 py-4 text-center font-extrabold bg-emerald-50/20 group-hover:bg-emerald-50/40 border-l border-white ${getDiffColor(row.diffSuccess)}`}>
                                  {row.diffSuccess > 0 ? "▲" : row.diffSuccess < 0 ? "▼" : ""} {Math.abs(row.diffSuccess).toFixed(2)}%
                              </td>
 
-                             <td className="px-2 py-4 text-center font-bold bg-indigo-50/10 group-hover:bg-indigo-50/30 border-l-4 border-white text-slate-700">
+                             <td className="px-2 py-4 text-center font-bold bg-blue-50/30 group-hover:bg-blue-100/40 border-l-4 border-white text-slate-700">
                                  {row.callRateA.toFixed(1)}%
                              </td>
-                             <td className="px-2 py-4 text-center font-bold bg-indigo-50/5 group-hover:bg-indigo-50/20 text-slate-700">
+                             <td className="px-2 py-4 text-center font-bold bg-purple-50/30 group-hover:bg-purple-100/40 text-slate-700">
                                  {row.callRateB.toFixed(1)}%
                              </td>
                              <td className={`px-2 py-4 text-center font-extrabold bg-indigo-50/20 group-hover:bg-indigo-50/40 border-l border-white ${getDiffColor(row.diffCall)}`}>
@@ -1180,30 +1544,30 @@ const ComparisonView = ({
                              <td colSpan={3} className="px-6 py-4 font-bold text-slate-700 text-right">
                                  รวมทั้งสิ้น (Total)
                              </td>
-                             <td className="px-2 py-4 text-center font-bold text-slate-800 bg-blue-100/30 border-l border-white">
+                             <td className="px-2 py-4 text-center font-bold text-slate-800 bg-blue-100/40 border-l border-white">
                                  {tableSummary.volA.toLocaleString()}
                              </td>
-                             <td className="px-2 py-4 text-center font-bold text-slate-800 bg-purple-100/30">
+                             <td className="px-2 py-4 text-center font-bold text-slate-800 bg-purple-100/40">
                                  {tableSummary.volB.toLocaleString()}
                              </td>
                              <td className={`px-2 py-4 text-center font-extrabold ${getDiffColor(tableSummary.diffVol)} bg-slate-100`}>
                                  {tableSummary.diffVol > 0 ? "+" : ""}{tableSummary.diffVol.toLocaleString()}
                              </td>
 
-                             <td className="px-2 py-4 text-center font-bold text-emerald-800 bg-emerald-100/30 border-l border-white">
+                             <td className="px-2 py-4 text-center font-bold text-slate-800 bg-blue-100/40 border-l border-white">
                                  {tableSummary.successRateA.toFixed(1)}%
                              </td>
-                             <td className="px-2 py-4 text-center font-bold text-emerald-800 bg-purple-100/30">
+                             <td className="px-2 py-4 text-center font-bold text-slate-800 bg-purple-100/40">
                                  {tableSummary.successRateB.toFixed(1)}%
                              </td>
                              <td className={`px-2 py-4 text-center font-extrabold ${getDiffColor(tableSummary.diffSuccess)} bg-emerald-100/50`}>
                                  {tableSummary.diffSuccess > 0 ? "▲" : tableSummary.diffSuccess < 0 ? "▼" : ""} {Math.abs(tableSummary.diffSuccess).toFixed(2)}%
                              </td>
 
-                             <td className="px-2 py-4 text-center font-bold text-indigo-800 bg-indigo-100/30 border-l border-white">
+                             <td className="px-2 py-4 text-center font-bold text-slate-800 bg-blue-100/40 border-l border-white">
                                  {tableSummary.callRateA.toFixed(1)}%
                              </td>
-                             <td className="px-2 py-4 text-center font-bold text-indigo-800 bg-indigo-100/20">
+                             <td className="px-2 py-4 text-center font-bold text-slate-800 bg-purple-100/40">
                                  {tableSummary.callRateB.toFixed(1)}%
                              </td>
                              <td className={`px-2 py-4 text-center font-extrabold ${getDiffColor(tableSummary.diffCall)} bg-indigo-100/50 border-r border-white`}>

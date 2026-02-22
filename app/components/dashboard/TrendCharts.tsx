@@ -31,20 +31,26 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="text-sm font-bold opacity-70 mb-2 border-b border-white/10 pb-2">
           {payload[0].payload.fullDate}
         </p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-3">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: entry.color }}
-            ></div>
-            <p className="text-lg font-black tracking-tight">
-              {entry.value.toFixed(1)}%
-              <span className="text-xs font-normal opacity-60 ml-2">
-                {entry.name}
-              </span>
-            </p>
-          </div>
-        ))}
+        {payload.map((entry: any, index: number) => {
+          // If the underlying stat isn't a percentage, don't suffix with %
+          const isRate = entry.name.includes("สำเร็จ");
+          const valString = isRate ? `${entry.value.toFixed(1)}%` : entry.value.toLocaleString();
+          
+          return (
+            <div key={index} className="flex items-center gap-3">
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              ></div>
+              <p className="text-lg font-black tracking-tight">
+                {valString}
+                <span className="text-xs font-normal opacity-60 ml-2">
+                  {entry.name}
+                </span>
+              </p>
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -151,6 +157,60 @@ export const CallTrendChart = ({ trendData }: TrendChartsProps) => (
           strokeWidth={3}
           fillOpacity={1}
           fill="url(#colorCall)"
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  </div>
+);
+
+export const VolumeTrendChart = ({ trendData }: TrendChartsProps) => (
+  <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 h-72 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-cyan-500"></div>
+    <div className="flex items-center gap-3 mb-6">
+      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+      </div>
+      <div>
+        <h3 className="text-lg font-black text-slate-800 tracking-tight">
+          แนวโน้มปริมาณงาน (ชิ้น)
+        </h3>
+      </div>
+    </div>
+    <ResponsiveContainer width="100%" height="80%">
+      <AreaChart
+        data={trendData}
+        margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+      >
+        <defs>
+          <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+        <XAxis
+          dataKey="date"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 600 }}
+          dy={10}
+        />
+        <YAxis
+          domain={['auto', 'auto']}
+          axisLine={false}
+          tickLine={false}
+          tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 600 }}
+          tickFormatter={(val) => val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val}
+        />
+        <Tooltip content={<CustomTooltip />} />
+        <Area
+          type="monotone"
+          dataKey="volumeH"
+          name="ปริมาณงาน (H)"
+          stroke="#2563EB"
+          strokeWidth={3}
+          fillOpacity={1}
+          fill="url(#colorVolume)"
         />
       </AreaChart>
     </ResponsiveContainer>
