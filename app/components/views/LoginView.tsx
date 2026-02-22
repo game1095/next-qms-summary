@@ -42,7 +42,7 @@ const LoginView = () => {
           <div className="space-y-4 text-center lg:text-left">
              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/50 border border-blue-200 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2 backdrop-blur-sm">
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                QMS Dashboard 2.0
+                QMS Dashboard 2.1
              </div>
              <h1 className="text-4xl lg:text-5xl font-black text-slate-800 tracking-tight leading-tight">
                ระบบติดตามและประเมินผล <br/>
@@ -53,11 +53,11 @@ const LoginView = () => {
              </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {/* Monitoring Section */}
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="w-8 h-[1px] bg-slate-300"></span>
+                <span className="w-8 h-[1px] bg-blue-300"></span>
                 Monitoring
               </h3>
               <div className="space-y-3">
@@ -67,11 +67,6 @@ const LoginView = () => {
                   desc="ติดตามปริมาณงานและผลสำเร็จ (Success %) แบบ Real-time"
                 />
                  <FeatureCard 
-                  icon="📈" 
-                  title="Trend Analysis" 
-                  desc="วิเคราะห์แนวโน้มผลงานย้อนหลังเพื่อวางแผนปรับปรุง"
-                />
-                 <FeatureCard 
                   icon="🗺️" 
                   title="Geo Heatmap" 
                   desc="เจาะลึกพื้นที่ที่มีปัญหาผ่านแผนที่ความร้อนรายจังหวัด"
@@ -79,27 +74,42 @@ const LoginView = () => {
               </div>
             </div>
 
-            {/* Tools Section */}
+            {/* Analysis Section */}
             <div className="space-y-4">
-               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="w-8 h-[1px] bg-slate-300"></span>
-                Tools
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-8 h-[1px] bg-purple-300"></span>
+                Analysis
               </h3>
               <div className="space-y-3">
+                 <FeatureCard 
+                  icon="⚖️" 
+                  title="Comparison" 
+                  desc="ตารางเปรียบเทียบผลงาน 2 ช่วงเวลาแบบเจาะลึกรายที่ทำการ"
+                />
+                 <FeatureCard 
+                  icon="🎯" 
+                  title="Performance Matrix" 
+                  desc="กราฟคัดกรองพื้นที่เป้าหมาย (Scatter Plot) เชิงลึก"
+                />
+              </div>
+            </div>
+
+            {/* Tools Section */}
+            <div className="space-y-4 xl:col-span-1 md:col-span-2">
+               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-8 h-[1px] bg-emerald-300"></span>
+                Tools
+              </h3>
+              <div className="space-y-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-3">
                 <FeatureCard 
                   icon="🔍" 
                   title="Smart Filters" 
-                  desc="กรองข้อมูลละเอียดหลายมิติ: พื้นที่, ประเภทบริการ, เวลา"
+                  desc="กรองข้อมูลแบบ Multi-dimension (พื้นที่, ประเภทบริการ)"
                 />
                 <FeatureCard 
-                  icon="🏆" 
-                  title="Performance Ranking" 
-                  desc="จัดอันดับหน่วยงานที่มีผลงานดีเยี่ยมและต้องปรับปรุง"
-                />
-                <FeatureCard 
-                  icon="📷" 
-                  title="Instant Report" 
-                  desc="Export กราฟและตารางเป็นไฟล์รูปภาพความละเอียดสูง"
+                  icon="📥" 
+                  title="Export & Report" 
+                  desc="ดาวน์โหลดไฟล์ Excel (.xlsx) และรูปภาพ Presentation"
                 />
               </div>
             </div>

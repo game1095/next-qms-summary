@@ -24,7 +24,7 @@ import Link from "next/link";
 
 import FilterButton from "../ui/FilterButton";
 import KPICard from "../ui/KPICard";
-import { DeliveryTrendChart, CallTrendChart } from "../dashboard/TrendCharts";
+import { DeliveryTrendChart, CallTrendChart, VolumeTrendChart } from "../dashboard/TrendCharts";
 import PerformanceTable from "../dashboard/PerformanceTable";
 import UploadModal from "../dashboard/UploadModal";
 import DetailsModal from "../dashboard/DetailsModal";
@@ -32,6 +32,7 @@ import DetailsModal from "../dashboard/DetailsModal";
 import { showUnreportedModal } from "../dashboard/UnreportedModal";
 import DailyInsights from "../dashboard/DailyInsights";
 import WelcomeGuide from "../dashboard/WelcomeGuide";
+import DashboardSkeleton from "../dashboard/DashboardSkeleton";
 import CountUp from "../common/CountUp";
 
 const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: ViewProps & { onOpenRankingView?: () => void, onOpenComparisonView?: () => void }) => {
@@ -80,7 +81,7 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
     direction: SortDirection;
   }>({
     key: "successRate",
-    direction: "desc",
+    direction: "asc",
   });
 
   const reportRef = useRef<HTMLDivElement>(null);
@@ -988,13 +989,7 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                     <span>Capture รายงาน</span>
                   </button>
 
-                  <Link 
-                    href="/ranking"
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:scale-95"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z"/></svg>
-                    <span>อันดับ</span>
-                  </Link>
+
                 </>
               )}
 
@@ -1218,9 +1213,10 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
               />
               
               {/* Charts Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 h-96">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 h-72">
                  {trendData.length > 0 && (
                    <>
+                     <VolumeTrendChart trendData={trendData} />
                      <DeliveryTrendChart trendData={trendData} />
                      <CallTrendChart trendData={trendData} />
                    </>
@@ -1523,14 +1519,8 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
       </div>
 
       {isLoading && (
-        <div className="py-32 flex flex-col items-center justify-center space-y-4">
-          <div className="relative w-16 h-16">
-            <div className="absolute top-0 left-0 w-full h-full border-4 border-slate-200 rounded-full"></div>
-            <div className="absolute top-0 left-0 w-full h-full border-4 border-red-500 rounded-full animate-spin border-t-transparent"></div>
-          </div>
-          <p className="text-slate-400 font-medium animate-pulse">
-            กำลังประมวลผลข้อมูล...
-          </p>
+        <div className="px-4 sm:px-6 lg:px-8 max-w-full mx-auto">
+          <DashboardSkeleton />
         </div>
       )}
 
