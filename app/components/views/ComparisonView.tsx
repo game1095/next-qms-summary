@@ -1078,10 +1078,328 @@ const ComparisonView = ({
 
       {/* --- Chart View (Executive Dashboard) --- */}
       {activeTab === "chart" && !isLoading && (
-        <div className="flex flex-col gap-8 mb-8 slide-up delay-200">
-          {/* --- Advanced Analytical Highlights --- */}
-          {!isLoading && comparisonList.length > 0 && (
+        <div className="flex flex-col gap-12 mb-8 slide-up delay-200">
+          {/* --- Section 1: Provincial Overview --- */}
+          {comparisonList.length > 0 && (
             <div className="flex flex-col gap-6 slide-up delay-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner text-xl">
+                  📊
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">
+                    สรุปภาพรวมรายพื้นที่ (Provincial Overview)
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    เปรียบเทียบปริมาณงานและประสิทธิภาพในแต่ละเขตรับผิดชอบ
+                  </p>
+                </div>
+              </div>
+              {/* 1x3 Grid for Executive Charts */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                {/* Chart 1: Volume by Province */}
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-bl-[100px] -z-10 group-hover:bg-blue-50 transition-colors"></div>
+                  <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
+                    📦 ปริมาณงานแยกตาม
+                    {isSingleGroup
+                      ? `ที่ทำการ (${singleGroupName})`
+                      : "จังหวัด"}
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    แสดงปริมาณงานทั้งหมดที่เข้าสู่ระบบ
+                    เปรียบเทียบสองช่วงเวลาเพื่อดูแนวโน้มภาระงาน
+                  </p>
+                  <div className="h-[350px] w-full mt-auto">
+                    <Bar
+                      ref={chart1Ref}
+                      data={{
+                        labels: provinceAggregation.map((p) => p.group),
+                        datasets: [
+                          {
+                            label: dateA
+                              ? dateA.toLocaleDateString("th-TH", {
+                                  day: "numeric",
+                                  month: "short",
+                                })
+                              : "Start",
+                            data: provinceAggregation.map((p) => p.volA),
+                            backgroundColor: "rgba(59, 130, 246, 0.5)",
+                            borderColor: "rgb(59, 130, 246)",
+                            borderWidth: 1,
+                            borderRadius: 4,
+                          },
+                          {
+                            label: dateB
+                              ? dateB.toLocaleDateString("th-TH", {
+                                  day: "numeric",
+                                  month: "short",
+                                })
+                              : "End",
+                            data: provinceAggregation.map((p) => p.volB),
+                            backgroundColor: "rgba(168, 85, 247, 0.5)",
+                            borderColor: "rgb(168, 85, 247)",
+                            borderWidth: 1,
+                            borderRadius: 4,
+                          },
+                        ],
+                      }}
+                      options={{
+                        layout: { padding: { top: 40 } },
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { position: "bottom" },
+                          tooltip: {
+                            callbacks: {
+                              label: (context) =>
+                                `${context.dataset.label}: ${context.raw?.toLocaleString()} ชิ้น`,
+                            },
+                          },
+                          datalabels: {
+                            color: "#334155",
+                            rotation: -90,
+                            anchor: "end",
+                            align: "end",
+                            offset: 4,
+                            font: { size: 10, weight: "bold" },
+                            formatter: (value) => value.toLocaleString(),
+                          },
+                        },
+                        onClick: (event) =>
+                          handleChartClick(
+                            event,
+                            chart1Ref,
+                            provinceAggregation.map((p) => p.group),
+                          ),
+                        onHover: (event, elements) => {
+                          if (!isSingleGroup) {
+                            (event.native?.target as HTMLElement).style.cursor =
+                              elements[0] ? "pointer" : "default";
+                          }
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Chart 2: Efficiency by Province */}
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-[100px] -z-10 group-hover:bg-emerald-50 transition-colors"></div>
+                  <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
+                    ⚡ เปรียบเทียบประสิทธิภาพนำจ่ายตาม
+                    {isSingleGroup
+                      ? `ที่ทำการ (${singleGroupName})`
+                      : "จังหวัด"}
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    สัดส่วนของงานที่พนักงานนำจ่ายสำเร็จ
+                  </p>
+                  <div className="h-[350px] w-full mt-auto">
+                    <ReactChart
+                      ref={chart2Ref}
+                      type="bar"
+                      data={{
+                        labels: provinceAggregation.map((p) => p.group),
+                        datasets: [
+                          {
+                            type: "bar" as const,
+                            label: dateA
+                              ? dateA.toLocaleDateString("th-TH", {
+                                  day: "numeric",
+                                  month: "short",
+                                })
+                              : "Start",
+                            data: provinceAggregation.map(
+                              (p) => p.successRateA,
+                            ),
+                            backgroundColor: "rgba(59, 130, 246, 0.5)",
+                            borderColor: "rgb(59, 130, 246)",
+                            borderWidth: 1,
+                            borderRadius: 4,
+                          },
+                          {
+                            type: "bar" as const,
+                            label: dateB
+                              ? dateB.toLocaleDateString("th-TH", {
+                                  day: "numeric",
+                                  month: "short",
+                                })
+                              : "End",
+                            data: provinceAggregation.map(
+                              (p) => p.successRateB,
+                            ),
+                            backgroundColor: "rgba(16, 185, 129, 0.4)",
+                            borderColor: "rgb(16, 185, 129)",
+                            borderWidth: 1,
+                            borderRadius: 4,
+                          },
+                        ],
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { position: "bottom" },
+                          tooltip: {
+                            callbacks: {
+                              label: (context) =>
+                                `${context.dataset.label}: ${Number(context.raw).toFixed(2)}%`,
+                            },
+                          },
+                          datalabels: {
+                            color: "#334155",
+                            rotation: -90,
+                            anchor: "end",
+                            align: (context: any) => {
+                              const val = Number(
+                                context.dataset.data[context.dataIndex],
+                              );
+                              return val > 20 ? "start" : "end";
+                            },
+                            offset: 4,
+                            font: { size: 10, weight: "bold" },
+                            formatter: (value) =>
+                              Number(value).toFixed(1) + "%",
+                          },
+                        },
+                        onClick: (event) =>
+                          handleChartClick(
+                            event,
+                            chart2Ref,
+                            provinceAggregation.map((p) => p.group),
+                          ),
+                        onHover: (event, elements) => {
+                          if (!isSingleGroup) {
+                            (event.native?.target as HTMLElement).style.cursor =
+                              elements[0] ? "pointer" : "default";
+                          }
+                        },
+                        scales: {
+                          y: { min: 0, max: 100 },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Chart 3: Call Efficiency by Province */}
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-[100px] -z-10 group-hover:bg-indigo-50 transition-colors"></div>
+                  <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
+                    📞 เปรียบเทียบประสิทธิภาพการโทรตาม
+                    {isSingleGroup
+                      ? `ที่ทำการ (${singleGroupName})`
+                      : "จังหวัด"}
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    สัดส่วนของการโทรติดต่อลูกค้า
+                  </p>
+                  <div className="h-[350px] w-full mt-auto">
+                    <ReactChart
+                      ref={chart3Ref}
+                      type="bar"
+                      data={{
+                        labels: provinceAggregation.map((p) => p.group),
+                        datasets: [
+                          {
+                            type: "bar" as const,
+                            label: dateA
+                              ? dateA.toLocaleDateString("th-TH", {
+                                  day: "numeric",
+                                  month: "short",
+                                })
+                              : "Start",
+                            data: provinceAggregation.map((p) => p.callRateA),
+                            backgroundColor: "rgba(139, 92, 246, 0.5)",
+                            borderColor: "rgb(139, 92, 246)",
+                            borderWidth: 1,
+                            borderRadius: 4,
+                          },
+                          {
+                            type: "bar" as const,
+                            label: dateB
+                              ? dateB.toLocaleDateString("th-TH", {
+                                  day: "numeric",
+                                  month: "short",
+                                })
+                              : "End",
+                            data: provinceAggregation.map((p) => p.callRateB),
+                            backgroundColor: "rgba(236, 72, 153, 0.4)",
+                            borderColor: "rgb(236, 72, 153)",
+                            borderWidth: 1,
+                            borderRadius: 4,
+                          },
+                        ],
+                      }}
+                      options={{
+                        layout: { padding: { top: 40 } },
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { position: "bottom" },
+                          tooltip: {
+                            callbacks: {
+                              label: (context) =>
+                                `${context.dataset.label}: ${Number(context.raw).toFixed(2)}%`,
+                            },
+                          },
+                          datalabels: {
+                            color: "#334155",
+                            rotation: -90,
+                            anchor: "end",
+                            align: (context: any) => {
+                              const val = Number(
+                                context.dataset.data[context.dataIndex],
+                              );
+                              return val > 20 ? "start" : "end";
+                            },
+                            offset: 4,
+                            font: { size: 10, weight: "bold" },
+                            formatter: (value) =>
+                              Number(value).toFixed(1) + "%",
+                          },
+                        },
+                        onClick: (event) =>
+                          handleChartClick(
+                            event,
+                            chart3Ref,
+                            provinceAggregation.map((p) => p.group),
+                          ),
+                        onHover: (event, elements) => {
+                          if (!isSingleGroup) {
+                            (event.native?.target as HTMLElement).style.cursor =
+                              elements[0] ? "pointer" : "default";
+                          }
+                        },
+                        scales: {
+                          y: { min: 0, max: 100 },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* --- Section 2: Performance Rankings --- */}
+          {comparisonList.length > 0 && (
+            <div className="flex flex-col gap-6 slide-up delay-150">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shadow-inner text-xl">
+                  🏆
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">
+                    จัดอันดับการเปลี่ยนแปลง (Performance Rankings)
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    พื้นที่ที่มีการพัฒนาและถดถอยมากที่สุดเมื่อเทียบกับอดีต
+                  </p>
+                </div>
+              </div>
+
               {/* Feature 1: Top Performers & Need Attention Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Most Improved */}
@@ -1183,8 +1501,229 @@ const ComparisonView = ({
                 })()}
               </div>
 
-              {/* Advanced Charts Grid */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
+                {/* Chart 4: Biggest Movers in Efficiency */}
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-bl-[100px] -z-10 group-hover:bg-amber-100/50 transition-colors"></div>
+                  <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
+                    📈 ที่ทำการที่ % เปลี่ยนแปลงมากที่สุด
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    5 ที่ทำการที่ก้าวหน้าที่สุด และ 5 ที่ทำการที่ตกลงมากที่สุด
+                  </p>
+                  <div className="h-[350px] w-full mt-auto">
+                    {(() => {
+                      const sortedByDiff = comparisonList
+                        .slice()
+                        .sort((a, b) => b.diffSuccess - a.diffSuccess);
+                      const top5 = sortedByDiff
+                        .slice(0, 5)
+                        .filter((x) => x.diffSuccess > 0);
+                      const bottom5 = sortedByDiff
+                        .slice(-5)
+                        .reverse()
+                        .filter((x) => x.diffSuccess < 0);
+                      const chartData = [...top5, ...bottom5];
+
+                      return (
+                        <Bar
+                          data={{
+                            labels: chartData.map((d) => d.name),
+                            datasets: [
+                              {
+                                label: "% เปลี่ยนแปลง",
+                                data: chartData.map((d) => d.diffSuccess),
+                                backgroundColor: chartData.map((d) =>
+                                  d.diffSuccess > 0
+                                    ? "rgba(16, 185, 129, 0.6)"
+                                    : "rgba(244, 63, 94, 0.6)",
+                                ),
+                                borderColor: chartData.map((d) =>
+                                  d.diffSuccess > 0
+                                    ? "rgb(16, 185, 129)"
+                                    : "rgb(244, 63, 94)",
+                                ),
+                                borderWidth: 1,
+                                borderRadius: 4,
+                              },
+                            ],
+                          }}
+                          options={{
+                            layout: { padding: { left: 40, right: 40 } },
+                            indexAxis: "y" as const,
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: { display: false },
+                              tooltip: {
+                                callbacks: {
+                                  label: (context) =>
+                                    `${Number(context.raw) > 0 ? "+" : ""}${Number(context.raw).toFixed(2)}%`,
+                                },
+                              },
+                              datalabels: {
+                                color: (context) =>
+                                  Number(
+                                    context.dataset.data[context.dataIndex],
+                                  ) > 0
+                                    ? "#047857"
+                                    : "#be123c",
+                                anchor: (context) =>
+                                  Number(
+                                    context.dataset.data[context.dataIndex],
+                                  ) > 0
+                                    ? "end"
+                                    : "start",
+                                align: (context) =>
+                                  Number(
+                                    context.dataset.data[context.dataIndex],
+                                  ) > 0
+                                    ? "end"
+                                    : "start",
+                                font: { size: 10, weight: "bold" },
+                                formatter: (value) =>
+                                  `${Number(value) > 0 ? "+" : ""}${Number(value).toFixed(1)}%`,
+                              },
+                            },
+                            scales: {
+                              x: {
+                                grid: {
+                                  color: (ctx) =>
+                                    ctx.tick.value === 0
+                                      ? "#94a3b8"
+                                      : "#f1f5f9",
+                                },
+                              },
+                            },
+                          }}
+                        />
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Chart 5: Biggest Movers in Call Efficiency */}
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50/50 rounded-bl-[100px] -z-10 group-hover:bg-orange-100/50 transition-colors"></div>
+                  <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
+                    📈 ที่ทำการที่ % การโทรเปลี่ยนแปลงมากที่สุด
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    5 ที่ทำการที่โทรประสานงานเพิ่มขึ้นมากที่สุด และ 5
+                    ที่ทำการที่เบาการโทรลง
+                  </p>
+                  <div className="h-[350px] w-full mt-auto">
+                    {(() => {
+                      const sortedByDiff = comparisonList
+                        .slice()
+                        .sort((a, b) => b.diffCall - a.diffCall);
+                      const top5 = sortedByDiff
+                        .slice(0, 5)
+                        .filter((x) => x.diffCall > 0);
+                      const bottom5 = sortedByDiff
+                        .slice(-5)
+                        .reverse()
+                        .filter((x) => x.diffCall < 0);
+                      const chartData = [...top5, ...bottom5];
+
+                      return (
+                        <Bar
+                          data={{
+                            labels: chartData.map((d) => d.name),
+                            datasets: [
+                              {
+                                label: "% เปลี่ยนแปลงการโทร",
+                                data: chartData.map((d) => d.diffCall),
+                                backgroundColor: chartData.map((d) =>
+                                  d.diffCall > 0
+                                    ? "rgba(16, 185, 129, 0.6)"
+                                    : "rgba(249, 115, 22, 0.6)",
+                                ),
+                                borderColor: chartData.map((d) =>
+                                  d.diffCall > 0
+                                    ? "rgb(16, 185, 129)"
+                                    : "rgb(249, 115, 22)",
+                                ),
+                                borderWidth: 1,
+                                borderRadius: 4,
+                              },
+                            ],
+                          }}
+                          options={{
+                            layout: { padding: { left: 40, right: 40 } },
+                            indexAxis: "y" as const,
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: { display: false },
+                              tooltip: {
+                                callbacks: {
+                                  label: (context) =>
+                                    `${Number(context.raw) > 0 ? "+" : ""}${Number(context.raw).toFixed(2)}%`,
+                                },
+                              },
+                              datalabels: {
+                                color: (context) =>
+                                  Number(
+                                    context.dataset.data[context.dataIndex],
+                                  ) > 0
+                                    ? "#047857"
+                                    : "#c2410c",
+                                anchor: (context) =>
+                                  Number(
+                                    context.dataset.data[context.dataIndex],
+                                  ) > 0
+                                    ? "end"
+                                    : "start",
+                                align: (context) =>
+                                  Number(
+                                    context.dataset.data[context.dataIndex],
+                                  ) > 0
+                                    ? "end"
+                                    : "start",
+                                font: { size: 10, weight: "bold" },
+                                formatter: (value) =>
+                                  `${Number(value) > 0 ? "+" : ""}${Number(value).toFixed(1)}%`,
+                              },
+                            },
+                            scales: {
+                              x: {
+                                grid: {
+                                  color: (ctx) =>
+                                    ctx.tick.value === 0
+                                      ? "#94a3b8"
+                                      : "#f1f5f9",
+                                },
+                              },
+                            },
+                          }}
+                        />
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* --- Section 3: Correlation Matrix --- */}
+          {comparisonList.length > 0 && (
+            <div className="flex flex-col gap-6 slide-up delay-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 shadow-inner text-xl">
+                  🧠
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">
+                    วิเคราะห์ความสัมพันธ์เชิงลึก (Correlation Matrix)
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    เจาะลึกความเชื่อมโยงระหว่างปริมาณงานและประสิทธิภาพ
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 {/* Feature 2: Scatter Plot Matrix (Delivery Success) */}
                 <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0 xl:col-span-1">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-bl-[100px] -z-10 group-hover:bg-blue-100/50 transition-colors"></div>
@@ -1496,377 +2035,126 @@ const ComparisonView = ({
                     />
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* 2x2 Grid for Executive Charts */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {/* Chart 1: Volume by Province */}
-            <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-bl-[100px] -z-10 group-hover:bg-blue-50 transition-colors"></div>
-              <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
-                📦 ปริมาณงานแยกตาม
-                {isSingleGroup ? `ที่ทำการ (${singleGroupName})` : "จังหวัด"}
-              </h3>
-              <p className="text-sm text-slate-500 mb-4">
-                แสดงปริมาณงานทั้งหมดที่เข้าสู่ระบบ
-                เปรียบเทียบสองช่วงเวลาเพื่อดูแนวโน้มภาระงาน
-              </p>
-              <div className="h-[350px] w-full mt-auto">
-                <Bar
-                  ref={chart1Ref}
-                  data={{
-                    labels: provinceAggregation.map((p) => p.group),
-                    datasets: [
-                      {
-                        label: dateA
-                          ? dateA.toLocaleDateString("th-TH", {
-                              day: "numeric",
-                              month: "short",
-                            })
-                          : "Start",
-                        data: provinceAggregation.map((p) => p.volA),
-                        backgroundColor: "rgba(59, 130, 246, 0.5)",
-                        borderColor: "rgb(59, 130, 246)",
-                        borderWidth: 1,
-                        borderRadius: 4,
-                      },
-                      {
-                        label: dateB
-                          ? dateB.toLocaleDateString("th-TH", {
-                              day: "numeric",
-                              month: "short",
-                            })
-                          : "End",
-                        data: provinceAggregation.map((p) => p.volB),
-                        backgroundColor: "rgba(168, 85, 247, 0.5)",
-                        borderColor: "rgb(168, 85, 247)",
-                        borderWidth: 1,
-                        borderRadius: 4,
-                      },
-                    ],
-                  }}
-                  options={{
-                    layout: { padding: { top: 40 } },
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { position: "bottom" },
-                      tooltip: {
-                        callbacks: {
-                          label: (context) =>
-                            `${context.dataset.label}: ${context.raw?.toLocaleString()} ชิ้น`,
-                        },
-                      },
-                      datalabels: {
-                        color: "#334155",
-                        rotation: -90,
-                        anchor: "end",
-                        align: "end",
-                        offset: 4,
-                        font: { size: 10, weight: "bold" },
-                        formatter: (value) => value.toLocaleString(),
-                      },
-                    },
-                    onClick: (event) =>
-                      handleChartClick(
-                        event,
-                        chart1Ref,
-                        provinceAggregation.map((p) => p.group),
-                      ),
-                    onHover: (event, elements) => {
-                      if (!isSingleGroup) {
-                        (event.native?.target as HTMLElement).style.cursor =
-                          elements[0] ? "pointer" : "default";
-                      }
-                    },
-                  }}
-                />
-              </div>
-            </div>
+                {/* Feature 4 */}
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50/50 rounded-bl-[100px] -z-10 group-hover:bg-purple-100/50 transition-colors"></div>
+                  <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
+                    🔗 ความสัมพันธ์: การโทร vs การนำจ่ายสำเร็จ
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    เปรียบเทียบความเชื่อมโยง ยิ่งโทรหาลูกค้าเยอะ
+                    ยิ่งนำจ่ายได้มากขึ้นหรือไม่? ประจำวันที่{" "}
+                    <strong>
+                      {dateB
+                        ? dateB.toLocaleDateString("th-TH", {
+                            day: "numeric",
+                            month: "short",
+                          })
+                        : "ล่าสุด"}
+                    </strong>
+                  </p>
 
-            {/* Chart 2: Efficiency by Province */}
-            <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-[100px] -z-10 group-hover:bg-emerald-50 transition-colors"></div>
-              <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
-                ⚡ เปรียบเทียบประสิทธิภาพนำจ่ายตาม
-                {isSingleGroup ? `ที่ทำการ (${singleGroupName})` : "จังหวัด"}
-              </h3>
-              <p className="text-sm text-slate-500 mb-4">
-                สัดส่วนของงานที่พนักงานนำจ่ายสำเร็จ
-              </p>
-              <div className="h-[350px] w-full mt-auto">
-                <ReactChart
-                  ref={chart2Ref}
-                  type="bar"
-                  data={{
-                    labels: provinceAggregation.map((p) => p.group),
-                    datasets: [
-                      {
-                        type: "bar" as const,
-                        label: dateA
-                          ? dateA.toLocaleDateString("th-TH", {
-                              day: "numeric",
-                              month: "short",
-                            })
-                          : "Start",
-                        data: provinceAggregation.map((p) => p.successRateA),
-                        backgroundColor: "rgba(59, 130, 246, 0.5)",
-                        borderColor: "rgb(59, 130, 246)",
-                        borderWidth: 1,
-                        borderRadius: 4,
-                      },
-                      {
-                        type: "bar" as const,
-                        label: dateB
-                          ? dateB.toLocaleDateString("th-TH", {
-                              day: "numeric",
-                              month: "short",
-                            })
-                          : "End",
-                        data: provinceAggregation.map((p) => p.successRateB),
-                        backgroundColor: "rgba(16, 185, 129, 0.4)",
-                        borderColor: "rgb(16, 185, 129)",
-                        borderWidth: 1,
-                        borderRadius: 4,
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { position: "bottom" },
-                      tooltip: {
-                        callbacks: {
-                          label: (context) =>
-                            `${context.dataset.label}: ${Number(context.raw).toFixed(2)}%`,
-                        },
-                      },
-                      datalabels: {
-                        color: "#334155",
-                        rotation: -90,
-                        anchor: "end",
-                        align: (context: any) => {
-                          const val = Number(
-                            context.dataset.data[context.dataIndex],
-                          );
-                          return val > 20 ? "start" : "end";
-                        },
-                        offset: 4,
-                        font: { size: 10, weight: "bold" },
-                        formatter: (value) => Number(value).toFixed(1) + "%",
-                      },
-                    },
-                    onClick: (event) =>
-                      handleChartClick(
-                        event,
-                        chart2Ref,
-                        provinceAggregation.map((p) => p.group),
-                      ),
-                    onHover: (event, elements) => {
-                      if (!isSingleGroup) {
-                        (event.native?.target as HTMLElement).style.cursor =
-                          elements[0] ? "pointer" : "default";
-                      }
-                    },
-                    scales: {
-                      y: { min: 0, max: 100 },
-                    },
-                  }}
-                />
-              </div>
-            </div>
+                  <div className="flex flex-wrap items-center gap-2 mb-4">
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold text-slate-600">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                      มุมขวาบน = โทรเยอะ + นำจ่ายดี
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold text-slate-600">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                      มุมซ้ายล่าง = โทรน้อย + นำจ่ายต่ำ
+                    </div>
+                  </div>
 
-            {/* Chart 3: Call Efficiency by Province */}
-            <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-[100px] -z-10 group-hover:bg-indigo-50 transition-colors"></div>
-              <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
-                📞 เปรียบเทียบประสิทธิภาพการโทรตาม
-                {isSingleGroup ? `ที่ทำการ (${singleGroupName})` : "จังหวัด"}
-              </h3>
-              <p className="text-sm text-slate-500 mb-4">
-                สัดส่วนของการโทรติดต่อลูกค้า
-              </p>
-              <div className="h-[350px] w-full mt-auto">
-                <ReactChart
-                  ref={chart3Ref}
-                  type="bar"
-                  data={{
-                    labels: provinceAggregation.map((p) => p.group),
-                    datasets: [
-                      {
-                        type: "bar" as const,
-                        label: dateA
-                          ? dateA.toLocaleDateString("th-TH", {
-                              day: "numeric",
-                              month: "short",
-                            })
-                          : "Start",
-                        data: provinceAggregation.map((p) => p.callRateA),
-                        backgroundColor: "rgba(139, 92, 246, 0.5)",
-                        borderColor: "rgb(139, 92, 246)",
-                        borderWidth: 1,
-                        borderRadius: 4,
-                      },
-                      {
-                        type: "bar" as const,
-                        label: dateB
-                          ? dateB.toLocaleDateString("th-TH", {
-                              day: "numeric",
-                              month: "short",
-                            })
-                          : "End",
-                        data: provinceAggregation.map((p) => p.callRateB),
-                        backgroundColor: "rgba(236, 72, 153, 0.4)",
-                        borderColor: "rgb(236, 72, 153)",
-                        borderWidth: 1,
-                        borderRadius: 4,
-                      },
-                    ],
-                  }}
-                  options={{
-                    layout: { padding: { top: 40 } },
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { position: "bottom" },
-                      tooltip: {
-                        callbacks: {
-                          label: (context) =>
-                            `${context.dataset.label}: ${Number(context.raw).toFixed(2)}%`,
-                        },
-                      },
-                      datalabels: {
-                        color: "#334155",
-                        rotation: -90,
-                        anchor: "end",
-                        align: (context: any) => {
-                          const val = Number(
-                            context.dataset.data[context.dataIndex],
-                          );
-                          return val > 20 ? "start" : "end";
-                        },
-                        offset: 4,
-                        font: { size: 10, weight: "bold" },
-                        formatter: (value) => Number(value).toFixed(1) + "%",
-                      },
-                    },
-                    onClick: (event) =>
-                      handleChartClick(
-                        event,
-                        chart3Ref,
-                        provinceAggregation.map((p) => p.group),
-                      ),
-                    onHover: (event, elements) => {
-                      if (!isSingleGroup) {
-                        (event.native?.target as HTMLElement).style.cursor =
-                          elements[0] ? "pointer" : "default";
-                      }
-                    },
-                    scales: {
-                      y: { min: 0, max: 100 },
-                    },
-                  }}
-                />
-              </div>
-            </div>
-            {/* Chart 4: Biggest Movers in Efficiency */}
-            <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col relative overflow-hidden group z-0">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-bl-[100px] -z-10 group-hover:bg-amber-100/50 transition-colors"></div>
-              <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
-                📈 ที่ทำการที่ % เปลี่ยนแปลงมากที่สุด
-              </h3>
-              <p className="text-sm text-slate-500 mb-4">
-                5 ที่ทำการที่ก้าวหน้าที่สุด และ 5 ที่ทำการที่ตกลงมากที่สุด
-              </p>
-              <div className="h-[350px] w-full mt-auto">
-                {(() => {
-                  const sortedByDiff = comparisonList
-                    .slice()
-                    .sort((a, b) => b.diffSuccess - a.diffSuccess);
-                  const top5 = sortedByDiff
-                    .slice(0, 5)
-                    .filter((x) => x.diffSuccess > 0);
-                  const bottom5 = sortedByDiff
-                    .slice(-5)
-                    .reverse()
-                    .filter((x) => x.diffSuccess < 0);
-                  const chartData = [...top5, ...bottom5];
-
-                  return (
-                    <Bar
+                  <div className="h-[400px] w-full mt-auto">
+                    <ReactChart
+                      type="scatter"
                       data={{
-                        labels: chartData.map((d) => d.name),
                         datasets: [
                           {
-                            label: "% เปลี่ยนแปลง",
-                            data: chartData.map((d) => d.diffSuccess),
-                            backgroundColor: chartData.map((d) =>
-                              d.diffSuccess > 0
-                                ? "rgba(16, 185, 129, 0.6)"
-                                : "rgba(244, 63, 94, 0.6)",
-                            ),
-                            borderColor: chartData.map((d) =>
-                              d.diffSuccess > 0
-                                ? "rgb(16, 185, 129)"
-                                : "rgb(244, 63, 94)",
-                            ),
+                            type: "scatter" as const,
+                            label: "ที่ทำการ (Office)",
+                            data: comparisonList.map((item) => ({
+                              x: item.callRateB,
+                              y: item.successRateB,
+                              itemName: item.name,
+                              itemGroup: item.group,
+                            })),
+                            backgroundColor: "rgba(168, 85, 247, 0.6)",
+                            borderColor: "rgb(168, 85, 247)",
                             borderWidth: 1,
-                            borderRadius: 4,
+                            pointRadius: 6,
+                            pointHoverRadius: 9,
                           },
                         ],
                       }}
                       options={{
-                        layout: { padding: { left: 40, right: 40 } },
-                        indexAxis: "y" as const,
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
                           legend: { display: false },
                           tooltip: {
+                            backgroundColor: "rgba(255, 255, 255, 0.95)",
+                            titleColor: "#1e293b",
+                            bodyColor: "#475569",
+                            borderColor: "#e2e8f0",
+                            borderWidth: 1,
                             callbacks: {
-                              label: (context) =>
-                                `${Number(context.raw) > 0 ? "+" : ""}${Number(context.raw).toFixed(2)}%`,
+                              label: (context: any) => {
+                                const raw = context.raw;
+                                if (typeof raw.itemName === "undefined")
+                                  return "";
+                                return [
+                                  `${raw.itemName} (${raw.itemGroup})`,
+                                  `% การโทร: ${raw.x.toFixed(2)}%`,
+                                  `% นำจ่ายสำเร็จ: ${raw.y.toFixed(2)}%`,
+                                ];
+                              },
                             },
                           },
-                          datalabels: {
-                            color: (context) =>
-                              Number(context.dataset.data[context.dataIndex]) >
-                              0
-                                ? "#047857"
-                                : "#be123c",
-                            anchor: (context) =>
-                              Number(context.dataset.data[context.dataIndex]) >
-                              0
-                                ? "end"
-                                : "start",
-                            align: (context) =>
-                              Number(context.dataset.data[context.dataIndex]) >
-                              0
-                                ? "end"
-                                : "start",
-                            font: { size: 10, weight: "bold" },
-                            formatter: (value) =>
-                              `${Number(value) > 0 ? "+" : ""}${Number(value).toFixed(1)}%`,
-                          },
+                          datalabels: { display: false },
                         },
                         scales: {
                           x: {
-                            grid: {
-                              color: (ctx) =>
-                                ctx.tick.value === 0 ? "#94a3b8" : "#f1f5f9",
+                            title: {
+                              display: true,
+                              text: "ประสิทธิภาพการโทร (%)",
+                              color: "#64748b",
+                              font: { weight: "bold" },
                             },
+                            min: Math.max(
+                              0,
+                              Math.min(
+                                ...comparisonList.map((d) => d.callRateB),
+                              ) - 5,
+                            ),
+                            max: 105,
+                            grid: { color: "#f1f5f9" },
+                          },
+                          y: {
+                            title: {
+                              display: true,
+                              text: "อัตราการนำจ่ายสำเร็จ (%)",
+                              color: "#64748b",
+                              font: { weight: "bold" },
+                            },
+                            min: Math.max(
+                              0,
+                              Math.min(
+                                ...comparisonList.map((d) => d.successRateB),
+                              ) - 5,
+                            ),
+                            max: 105,
+                            grid: { color: "#f1f5f9" },
                           },
                         },
                       }}
                     />
-                  );
-                })()}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
