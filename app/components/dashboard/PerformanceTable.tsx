@@ -1,4 +1,9 @@
-import { AggregatedSums, SummaryMetrics, SortKey, SortDirection } from "../../types";
+import {
+  AggregatedSums,
+  SummaryMetrics,
+  SortKey,
+  SortDirection,
+} from "../../types";
 
 interface PerformanceTableProps {
   summaryData: [string, AggregatedSums][];
@@ -19,7 +24,11 @@ const PerformanceTable = ({
 }: PerformanceTableProps) => {
   const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
     if (sortConfig.key !== columnKey)
-      return <span className="text-slate-300 ml-1 opacity-0 group-hover:opacity-50 transition-opacity">⇅</span>;
+      return (
+        <span className="text-slate-300 ml-1 opacity-0 group-hover:opacity-50 transition-opacity">
+          ⇅
+        </span>
+      );
     return (
       <span className="text-blue-600 ml-1">
         {sortConfig.direction === "asc" ? "▲" : "▼"}
@@ -29,10 +38,10 @@ const PerformanceTable = ({
 
   const getBadgeClass = (rate: number) => {
     if (rate >= 98)
-      return "text-emerald-700 bg-emerald-50 border-emerald-200/50";
+      return "text-emerald-700 bg-emerald-50/80 border-emerald-200 shadow-[0_1px_4px_rgba(16,185,129,0.1)] backdrop-blur-sm";
     if (rate >= 95)
-      return "text-yellow-700 bg-yellow-50 border-yellow-200/50";
-    return "text-rose-700 bg-rose-50 border-rose-200/50";
+      return "text-amber-700 bg-amber-50/80 border-amber-200 shadow-[0_1px_4px_rgba(245,158,11,0.1)] backdrop-blur-sm";
+    return "text-rose-700 bg-rose-50/80 border-rose-200 shadow-[0_1px_4px_rgba(244,63,94,0.1)] backdrop-blur-sm";
   };
 
   const getProgressColor = (rate: number) => {
@@ -40,6 +49,87 @@ const PerformanceTable = ({
     if (rate >= 95) return "bg-yellow-400";
     return "bg-rose-500";
   };
+
+  const RankBadge = ({ rank }: { rank: number }) => {
+    if (rank === 1) {
+      return (
+        <div
+          className="flex items-center justify-center gap-[3px] px-2 min-w-[2.25rem] h-5 rounded-md bg-gradient-to-br from-yellow-300/90 via-yellow-400/90 to-yellow-500/90 text-yellow-900 font-black text-[10px] shadow-[0_2px_8px_-2px_rgba(234,179,8,0.5)] border border-yellow-300/40 backdrop-blur-sm"
+          title="อันดับ 1"
+        >
+          <span className="text-[11px] leading-none -mt-[1px]">🏆</span>
+          <span>1</span>
+        </div>
+      );
+    }
+    if (rank === 2) {
+      return (
+        <div
+          className="flex items-center justify-center gap-[3px] px-2 min-w-[2.25rem] h-5 rounded-md bg-gradient-to-br from-slate-200/90 via-slate-300/90 to-slate-400/90 text-slate-800 font-black text-[10px] shadow-[0_2px_8px_-2px_rgba(148,163,184,0.4)] border border-slate-300/40 backdrop-blur-sm"
+          title="อันดับ 2"
+        >
+          <span className="text-[11px] leading-none -mt-[1px]">🥈</span>
+          <span>2</span>
+        </div>
+      );
+    }
+    if (rank === 3) {
+      return (
+        <div
+          className="flex items-center justify-center gap-[3px] px-2 min-w-[2.25rem] h-5 rounded-md bg-gradient-to-br from-amber-400/90 via-amber-500/90 to-amber-600/90 text-white font-black text-[10px] shadow-[0_2px_8px_-2px_rgba(245,158,11,0.5)] border border-amber-300/40 backdrop-blur-sm"
+          title="อันดับ 3"
+        >
+          <span className="text-[11px] leading-none -mt-[1px]">🥉</span>
+          <span>3</span>
+        </div>
+      );
+    }
+    return (
+      <div
+        className="flex items-center justify-center min-w-[1.5rem] px-1 h-5 rounded-md bg-slate-100/80 text-slate-500 font-bold text-[10px] border border-slate-200/60"
+        title={`อันดับ ${rank}`}
+      >
+        #{rank}
+      </div>
+    );
+  };
+
+  const deliveryRates = summaryData
+    .map(([key, sums]) => ({
+      key,
+      rate: sums.sumH > 0 ? (sums.sumM / sums.sumH) * 100 : 0,
+    }))
+    .sort((a, b) => b.rate - a.rate);
+
+  const callRates = summaryData
+    .map(([key, sums]) => ({
+      key,
+      rate: sums.sumH > 0 ? (sums.sumQ / sums.sumH) * 100 : 0,
+    }))
+    .sort((a, b) => b.rate - a.rate);
+
+  const deliveryRanks = new Map<string, number>();
+  const callRanks = new Map<string, number>();
+
+  let currentRank = 1;
+  let prevRate = -1;
+  deliveryRates.forEach((item, index) => {
+    if (item.rate !== prevRate) {
+      currentRank = index + 1;
+      prevRate = item.rate;
+    }
+    deliveryRanks.set(item.key, currentRank);
+  });
+
+  currentRank = 1;
+  prevRate = -1;
+  callRates.forEach((item, index) => {
+    if (item.rate !== prevRate) {
+      currentRank = index + 1;
+      prevRate = item.rate;
+    }
+    callRanks.set(item.key, currentRank);
+  });
 
   return (
     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative">
@@ -117,6 +207,9 @@ const PerformanceTable = ({
               const displaySuccessRate = parseFloat(rowSuccessRate.toFixed(1));
               const displayCallRate = parseFloat(callSuccessRate.toFixed(1));
 
+              const deliveryRank = deliveryRanks.get(compositeKey) || 0;
+              const callRank = callRanks.get(compositeKey) || 0;
+
               return (
                 <tr
                   key={compositeKey}
@@ -126,9 +219,23 @@ const PerformanceTable = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700 sticky left-0 z-10 bg-white group-hover:bg-blue-50/50 transition-colors border-r border-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                     <div className="flex items-center gap-2 text-slate-700 group-hover:text-blue-700 transition-colors">
                       <span className="opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1">
-                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"></path></svg>
+                        <svg
+                          className="w-4 h-4 text-blue-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2.5"
+                            d="M9 5l7 7-7 7"
+                          ></path>
+                        </svg>
                       </span>
-                      <span className="transform group-hover:translate-x-1 transition-transform">{keyF}</span>
+                      <span className="transform group-hover:translate-x-1 transition-transform">
+                        {keyF}
+                      </span>
                     </div>
                   </td>
                   {/* Delivery Columns */}
@@ -146,15 +253,20 @@ const PerformanceTable = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right border-r border-slate-100 bg-emerald-50/5 group-hover:bg-emerald-50/20">
                     <div className="flex flex-col items-end gap-1.5 w-full">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-md border text-xs font-bold ${getBadgeClass(displaySuccessRate)}`}
-                      >
-                        {rowSuccessRate.toFixed(1)}%
-                      </span>
+                      <div className="flex items-center justify-end gap-2 w-full">
+                        <RankBadge rank={deliveryRank} />
+                        <span
+                          className={`px-2 py-0.5 rounded-md border text-[11px] font-black tracking-wide ${getBadgeClass(displaySuccessRate)} flex items-center justify-center min-w-[3.5rem]`}
+                        >
+                          {rowSuccessRate.toFixed(1)}%
+                        </span>
+                      </div>
                       <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full ${getProgressColor(displaySuccessRate)}`} 
-                          style={{ width: `${Math.min(100, Math.max(0, rowSuccessRate))}%` }}
+                        <div
+                          className={`h-full rounded-full ${getProgressColor(displaySuccessRate)}`}
+                          style={{
+                            width: `${Math.min(100, Math.max(0, rowSuccessRate))}%`,
+                          }}
                         />
                       </div>
                     </div>
@@ -165,15 +277,20 @@ const PerformanceTable = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right bg-purple-50/5 group-hover:bg-purple-50/20">
                     <div className="flex flex-col items-end gap-1.5 w-full">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-md border text-xs font-bold ${getBadgeClass(displayCallRate)}`}
-                      >
-                        {callSuccessRate.toFixed(1)}%
-                      </span>
+                      <div className="flex items-center justify-end gap-2 w-full">
+                        <RankBadge rank={callRank} />
+                        <span
+                          className={`px-2 py-0.5 rounded-md border text-[11px] font-black tracking-wide ${getBadgeClass(displayCallRate)} flex items-center justify-center min-w-[3.5rem]`}
+                        >
+                          {callSuccessRate.toFixed(1)}%
+                        </span>
+                      </div>
                       <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full ${getProgressColor(displayCallRate)}`} 
-                          style={{ width: `${Math.min(100, Math.max(0, callSuccessRate))}%` }}
+                        <div
+                          className={`h-full rounded-full ${getProgressColor(displayCallRate)}`}
+                          style={{
+                            width: `${Math.min(100, Math.max(0, callSuccessRate))}%`,
+                          }}
                         />
                       </div>
                     </div>
@@ -208,14 +325,16 @@ const PerformanceTable = ({
               <td className="px-6 py-5 whitespace-nowrap text-right">
                 <div className="flex flex-col items-end gap-2 w-full">
                   <span
-                    className={`px-3 py-1 rounded-lg border shadow-sm text-sm font-black ${parseFloat(summaryKPIs.successRate.toFixed(1)) >= 98 ? "bg-emerald-500 text-white border-emerald-600" : parseFloat(summaryKPIs.successRate.toFixed(1)) >= 95 ? "bg-yellow-400 text-slate-900 border-yellow-500" : "bg-rose-500 text-white border-rose-600"}`}
+                    className={`px-3 py-1 rounded-lg border shadow-sm text-sm font-black tracking-wide ${parseFloat(summaryKPIs.successRate.toFixed(1)) >= 98 ? "bg-emerald-50 text-emerald-700 border-emerald-200 shadow-emerald-500/10" : parseFloat(summaryKPIs.successRate.toFixed(1)) >= 95 ? "bg-amber-50 text-amber-700 border-amber-200 shadow-amber-500/10" : "bg-rose-50 text-rose-700 border-rose-200 shadow-rose-500/10"} flex items-center justify-center min-w-[4rem]`}
                   >
                     {summaryKPIs.successRate.toFixed(1)}%
                   </span>
                   <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full ${getProgressColor(parseFloat(summaryKPIs.successRate.toFixed(1)))}`} 
-                      style={{ width: `${Math.min(100, Math.max(0, summaryKPIs.successRate))}%` }}
+                    <div
+                      className={`h-full rounded-full ${getProgressColor(parseFloat(summaryKPIs.successRate.toFixed(1)))}`}
+                      style={{
+                        width: `${Math.min(100, Math.max(0, summaryKPIs.successRate))}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -226,7 +345,7 @@ const PerformanceTable = ({
               <td className="px-6 py-5 whitespace-nowrap text-right">
                 <div className="flex flex-col items-end gap-2 w-full">
                   <span
-                   className={`px-3 py-1 rounded-lg border shadow-sm text-sm font-black ${parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)) >= 98 ? "bg-emerald-500 text-white border-emerald-600" : parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)) >= 95 ? "bg-yellow-400 text-slate-900 border-yellow-500" : "bg-rose-500 text-white border-rose-600"}`}
+                    className={`px-3 py-1 rounded-lg border shadow-sm text-sm font-black tracking-wide ${parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)) >= 98 ? "bg-emerald-50 text-emerald-700 border-emerald-200 shadow-emerald-500/10" : parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)) >= 95 ? "bg-amber-50 text-amber-700 border-amber-200 shadow-amber-500/10" : "bg-rose-50 text-rose-700 border-rose-200 shadow-rose-500/10"} flex items-center justify-center min-w-[4rem]`}
                   >
                     {(summaryKPIs.H > 0
                       ? (summaryKPIs.Q / summaryKPIs.H) * 100
@@ -235,9 +354,11 @@ const PerformanceTable = ({
                     %
                   </span>
                   <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full ${getProgressColor(parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)))}`} 
-                      style={{ width: `${Math.min(100, Math.max(0, summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0))}%` }}
+                    <div
+                      className={`h-full rounded-full ${getProgressColor(parseFloat((summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0).toFixed(1)))}`}
+                      style={{
+                        width: `${Math.min(100, Math.max(0, summaryKPIs.H > 0 ? (summaryKPIs.Q / summaryKPIs.H) * 100 : 0))}%`,
+                      }}
                     />
                   </div>
                 </div>
