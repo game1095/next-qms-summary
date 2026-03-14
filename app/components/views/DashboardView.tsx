@@ -24,7 +24,11 @@ import Link from "next/link";
 
 import FilterButton from "../ui/FilterButton";
 import KPICard from "../ui/KPICard";
-import { DeliveryTrendChart, CallTrendChart, VolumeTrendChart } from "../dashboard/TrendCharts";
+import {
+  DeliveryTrendChart,
+  CallTrendChart,
+  VolumeTrendChart,
+} from "../dashboard/TrendCharts";
 import PerformanceTable from "../dashboard/PerformanceTable";
 import UploadModal from "../dashboard/UploadModal";
 import DetailsModal from "../dashboard/DetailsModal";
@@ -34,8 +38,16 @@ import DailyInsights from "../dashboard/DailyInsights";
 import WelcomeGuide from "../dashboard/WelcomeGuide";
 import DashboardSkeleton from "../dashboard/DashboardSkeleton";
 import CountUp from "../common/CountUp";
+import CaptureModal from "../dashboard/CaptureModal";
 
-const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: ViewProps & { onOpenRankingView?: () => void, onOpenComparisonView?: () => void }) => {
+const DashboardView = ({
+  active,
+  onOpenRankingView,
+  onOpenComparisonView,
+}: ViewProps & {
+  onOpenRankingView?: () => void;
+  onOpenComparisonView?: () => void;
+}) => {
   const [supabaseData, setSupabaseData] = useState<DeliveryDataRow[]>([]);
   const [prevSupabaseData, setPrevSupabaseData] = useState<DeliveryDataRow[]>(
     [],
@@ -51,6 +63,12 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
   const [isWelcomeGuideOpen, setIsWelcomeGuideOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isBatchExporting, setIsBatchExporting] = useState(false);
+  const [captureComponents, setCaptureComponents] = useState<string[]>([
+    "insights",
+    "charts",
+    "kpi",
+  ]);
+  const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
   const [uploadFilesData, setUploadFilesData] = useState<{
     [key: string]: any[];
   }>({});
@@ -90,8 +108,8 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
     // Check for welcome guide
     const hasSeenWelcome = localStorage.getItem("hasSeenWelcomeGuide");
     if (!hasSeenWelcome) {
-       // Small delay to let the dashboard load first
-       setTimeout(() => setIsWelcomeGuideOpen(true), 1000);
+      // Small delay to let the dashboard load first
+      setTimeout(() => setIsWelcomeGuideOpen(true), 1000);
     }
   }, []);
 
@@ -228,7 +246,7 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
             selectedFilter,
             selectedServiceFilter,
           },
-          "*"
+          "*",
         );
       }
     };
@@ -857,7 +875,10 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
     setIsModalOpen(true);
   };
 
-  const handleBatchExport = async () => {
+  const handleBatchExport = async (
+    selectedKeys: string[],
+    selectedComponents: string[],
+  ) => {
     if (!reportRef.current) return;
     if (supabaseData.length === 0) {
       Swal.fire({
@@ -869,18 +890,10 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
       return;
     }
 
-    const confirmResult = await Swal.fire({
-      title: "ยืนยันการบันทึกภาพ",
-      text: `ระบบจะทำการดาวน์โหลดรายงานสรุปแยกรายจังหวัด ทั้งหมด ${CURRENT_CONFIG.provinces.length + 1} รายการ โดยหน้าจอจะเปลี่ยนไปตามจังหวัดที่กำลังบันทึก`,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#10B981",
-      cancelButtonColor: "#EF4444",
-      confirmButtonText: "เริ่มดาวน์โหลด",
-      cancelButtonText: "ยกเลิก",
-    });
-
-    if (!confirmResult.isConfirmed) return;
+    const isCaptureAll =
+      selectedKeys.length === Object.keys(filterDisplayNames).length;
+    setIsCaptureModalOpen(false);
+    setCaptureComponents(selectedComponents);
 
     const originalFilter = selectedFilter;
     const originalControlsState = isControlsOpen;
@@ -889,17 +902,26 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
 
     try {
       setIsControlsOpen(false);
-      const exportQueue = [
-        { key: "province-summary", label: "สรุปภาพรวมเขต" },
-        ...CURRENT_CONFIG.provinces.map((p) => ({
-          key: p.key,
-          label: p.label,
-        })),
-      ];
+
+      let exportQueue;
+      if (isCaptureAll) {
+        exportQueue = [
+          { key: "province-summary", label: "สรุปภาพรวมเขต" },
+          ...CURRENT_CONFIG.provinces.map((p) => ({
+            key: p.key,
+            label: p.label,
+          })),
+        ];
+      } else {
+        exportQueue = selectedKeys.map((key) => ({
+          key,
+          label: filterDisplayNames[key] || key,
+        }));
+      }
 
       for (const item of exportQueue) {
         setSelectedFilter(item.key);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1500)); // Increased wait time to ensure React renders hidden classes
         const dataUrl = await toPng(reportRef.current, {
           cacheBust: true,
           backgroundColor: "#FFFFFF",
@@ -916,7 +938,9 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
       Swal.fire({
         icon: "success",
         title: "เสร็จสิ้น",
-        text: "ดาวน์โหลดครบทุกจังหวัดเรียบร้อยแล้ว!",
+        text: isCaptureAll
+          ? "ดาวน์โหลดครบทุกจังหวัดเรียบร้อยแล้ว!"
+          : "ดาวน์โหลดรูปภาพเรียบร้อยแล้ว!",
         confirmButtonText: "ตกลง",
       });
     } catch (error: any) {
@@ -932,6 +956,7 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
       setIsControlsOpen(originalControlsState);
       setIsBatchExporting(false);
       document.body.style.cursor = "default";
+      setCaptureComponents(["insights", "charts", "kpi"]); // Reset selection
     }
   };
 
@@ -959,7 +984,7 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
           {/* Header Section - Sticky */}
           <div className="sticky top-4 z-40 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white/90 backdrop-blur-xl p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 relative overflow-hidden group transition-all duration-300">
             <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-blue-500 to-indigo-600"></div>
-            
+
             {/* Title and Date */}
             <div className="space-y-2 pl-2">
               <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-snug">
@@ -968,12 +993,34 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                   ({filterDisplayNames[selectedFilter]})
                 </span>
               </h2>
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl md:text-2xl font-bold leading-snug text-red-600">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl md:text-2xl font-bold leading-snug text-red-600">
                     {formatDateToISO(startDate) === formatDateToISO(endDate)
                       ? formatToFullThaiDate(startDate)
                       : `${formatToFullThaiDate(startDate)} - ${formatToFullThaiDate(endDate)}`}
-                </h2>
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100/50 shadow-sm overflow-hidden group/credit cursor-default transition-all hover:scale-105">
+                    <svg
+                      className="w-4 h-4 text-blue-600 group-hover/credit:scale-110 transition-transform"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2.5"
+                        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                      />
+                    </svg>
+                    <span className="text-[13px] sm:text-[14px] font-bold text-blue-700 tracking-wide">
+                      พัฒนาโดย งานรับฝากและส่งต่อ ปข.6
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -982,23 +1029,51 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
               {!isBatchExporting && isControlsOpen && (
                 <>
                   <button
-                    onClick={handleBatchExport}
+                    onClick={() => setIsCaptureModalOpen(true)}
                     className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 hover:-translate-y-0.5 active:scale-95"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
                     <span>Capture รายงาน</span>
                   </button>
-
-
                 </>
               )}
 
               <Link
-                  href="/comparison"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 hover:-translate-y-0.5 active:scale-95"
+                href="/comparison"
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 hover:-translate-y-0.5 active:scale-95"
               >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
-                  <span>เปรียบเทียบ</span>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                  />
+                </svg>
+                <span>เปรียบเทียบ</span>
               </Link>
 
               <button
@@ -1006,7 +1081,19 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                 className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-600 hover:text-blue-600 border border-slate-200 hover:border-blue-400 hover:bg-blue-50 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95"
               >
                 {isControlsOpen ? "ซ่อน" : "ตัวกรอง"}
-                <svg className={`w-4 h-4 transition-transform ${isControlsOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                <svg
+                  className={`w-4 h-4 transition-transform ${isControlsOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
               </button>
 
               <button
@@ -1014,7 +1101,19 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                 className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
                 title="ออกจากระบบ"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
               </button>
             </div>
           </div>
@@ -1047,8 +1146,16 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                         <button
                           onClick={() => {
                             const date = new Date();
-                            const start = new Date(date.getFullYear(), date.getMonth(), 1);
-                            const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                            const start = new Date(
+                              date.getFullYear(),
+                              date.getMonth(),
+                              1,
+                            );
+                            const end = new Date(
+                              date.getFullYear(),
+                              date.getMonth() + 1,
+                              0,
+                            );
                             setStartDate(start);
                             setEndDate(end);
                           }}
@@ -1059,8 +1166,16 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                         <button
                           onClick={() => {
                             const date = new Date();
-                            const start = new Date(date.getFullYear(), date.getMonth() - 1, 1);
-                            const end = new Date(date.getFullYear(), date.getMonth(), 0);
+                            const start = new Date(
+                              date.getFullYear(),
+                              date.getMonth() - 1,
+                              1,
+                            );
+                            const end = new Date(
+                              date.getFullYear(),
+                              date.getMonth(),
+                              0,
+                            );
                             setStartDate(start);
                             setEndDate(end);
                           }}
@@ -1205,25 +1320,37 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
           )}
           {!isLoading && summaryData.length > 0 && (
             <>
-              <DailyInsights
-                currentData={supabaseData}
-                prevData={prevSupabaseData}
-                selectedFilter={selectedFilter}
-                selectedServiceFilter={selectedServiceFilter}
-              />
-              
-              {/* Charts Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 h-72">
-                 {trendData.length > 0 && (
-                   <>
-                     <VolumeTrendChart trendData={trendData} />
-                     <DeliveryTrendChart trendData={trendData} />
-                     <CallTrendChart trendData={trendData} />
-                   </>
-                 )}
+              <div
+                className={
+                  isBatchExporting && !captureComponents.includes("insights")
+                    ? "hidden"
+                    : ""
+                }
+              >
+                <DailyInsights
+                  currentData={supabaseData}
+                  prevData={prevSupabaseData}
+                  selectedFilter={selectedFilter}
+                  selectedServiceFilter={selectedServiceFilter}
+                />
               </div>
 
-              <div className="flex items-center justify-between mb-4 mt-8 px-2">
+              {/* Charts Grid */}
+              <div
+                className={`grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 h-72 ${isBatchExporting && !captureComponents.includes("charts") ? "hidden" : ""}`}
+              >
+                {trendData.length > 0 && (
+                  <>
+                    <VolumeTrendChart trendData={trendData} />
+                    <DeliveryTrendChart trendData={trendData} />
+                    <CallTrendChart trendData={trendData} />
+                  </>
+                )}
+              </div>
+
+              <div
+                className={`flex items-center justify-between mb-4 mt-8 px-2 ${isBatchExporting && !captureComponents.includes("kpi") ? "hidden" : ""}`}
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-1 h-8 bg-red-600 rounded-full"></div>
                   <h3 className="text-xl font-bold text-slate-800">
@@ -1240,10 +1367,18 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                 )}
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+              <div
+                className={`grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8 ${isBatchExporting && !captureComponents.includes("kpi") ? "hidden" : ""}`}
+              >
                 <KPICard
                   title="อัตราความสำเร็จ"
-                  value={<CountUp end={summaryKPIs.successRate} decimals={1} suffix="%" />}
+                  value={
+                    <CountUp
+                      end={summaryKPIs.successRate}
+                      decimals={1}
+                      suffix="%"
+                    />
+                  }
                   type="success"
                   highlight
                   trend={getComparison(
@@ -1386,16 +1521,26 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                 />
               </div>
 
-              <div className="flex items-center gap-3 mb-4 px-2">
+              <div
+                className={`flex items-center gap-3 mb-4 px-2 ${isBatchExporting && !captureComponents.includes("kpi") ? "hidden" : ""}`}
+              >
                 <div className="w-1 h-8 bg-purple-600 rounded-full"></div>
                 <h3 className="text-xl font-bold text-slate-800">
                   2. ประสิทธิภาพการโทรนัดหมาย
                 </h3>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div
+                className={`grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 ${isBatchExporting && !captureComponents.includes("kpi") ? "hidden" : ""}`}
+              >
                 <KPICard
                   title="โทรสำเร็จ (%)"
-                  value={<CountUp end={currentCallSuccessRate} decimals={1} suffix="%" />}
+                  value={
+                    <CountUp
+                      end={currentCallSuccessRate}
+                      decimals={1}
+                      suffix="%"
+                    />
+                  }
                   type="success"
                   highlight
                   trend={getComparison(
@@ -1428,7 +1573,13 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                 />
                 <KPICard
                   title="โทรไม่สำเร็จ (%)"
-                  value={<CountUp end={currentCallFailRate} decimals={1} suffix="%" />}
+                  value={
+                    <CountUp
+                      end={currentCallFailRate}
+                      decimals={1}
+                      suffix="%"
+                    />
+                  }
                   type="danger"
                   highlight
                   inverseTrend={true}
@@ -1480,31 +1631,6 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
                 />
               </div>
 
-              {/* Measurement Criteria Legend - MOVED UP HERE FOR REPORT FOCUS */}
-              <div className="mb-4 flex flex-wrap items-center gap-4 text-xs text-slate-600 bg-white p-4 rounded-xl border border-gray-200 shadow-sm justify-end">
-                <span className="font-bold mr-2 uppercase tracking-wide text-slate-500">
-                  เกณฑ์การวัดผล:
-                </span>
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span className="font-bold text-emerald-700">
-                    ดีเยี่ยม (≥98%)
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-50 border border-yellow-100">
-                  <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
-                  <span className="font-bold text-yellow-700">
-                    ดี (95-97.9%)
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-100">
-                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                  <span className="font-bold text-rose-700">
-                    ต้องปรับปรุง (&lt;95%)
-                  </span>
-                </div>
-              </div>
-
               <PerformanceTable
                 summaryData={summaryData}
                 summaryKPIs={summaryKPIs}
@@ -1515,6 +1641,28 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
               />
             </>
           )}
+          {/* Measurement Criteria Legend - MOVED UP HERE FOR REPORT FOCUS */}
+          <div className="mb-4 flex flex-wrap items-center gap-4 text-xs text-slate-600 bg-white p-4 rounded-xl border border-gray-200 shadow-sm justify-end">
+            <span className="font-bold mr-2 uppercase tracking-wide text-slate-500">
+              เกณฑ์การวัดผล:
+            </span>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span className="font-bold text-emerald-700">
+                ดีเยี่ยม (≥98%)
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-50 border border-yellow-100">
+              <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+              <span className="font-bold text-yellow-700">ดี (95-97.9%)</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-100">
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+              <span className="font-bold text-rose-700">
+                ต้องปรับปรุง (&lt;95%)
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1541,25 +1689,44 @@ const DashboardView = ({ active, onOpenRankingView, onOpenComparisonView }: View
         data={modalData}
       />
 
-      <WelcomeGuide 
+      <WelcomeGuide
         isOpen={isWelcomeGuideOpen}
         onClose={() => setIsWelcomeGuideOpen(false)}
+      />
+
+      <CaptureModal
+        isOpen={isCaptureModalOpen}
+        onClose={() => setIsCaptureModalOpen(false)}
+        options={Object.keys(filterDisplayNames)
+          .filter((key) => key !== "all") // Remove "ทุกที่ทำการ"
+          .map((key) => ({
+            key,
+            label: filterDisplayNames[key],
+          }))}
+        onConfirm={handleBatchExport}
       />
 
       {/* Back to Top Button */}
       <button
         onClick={scrollToTop}
         className={`fixed bottom-8 right-8 z-50 p-4 bg-slate-900 text-white rounded-full shadow-lg transition-all duration-500 hover:bg-blue-600 hover:shadow-blue-500/30 active:scale-90 group ${
-          showScrollTop ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0"
+          showScrollTop
+            ? "translate-y-0 opacity-100"
+            : "translate-y-20 opacity-0"
         }`}
       >
-        <svg 
-          className="w-6 h-6 group-hover:-translate-y-1 transition-transform duration-300" 
-          fill="none" 
-          stroke="currentColor" 
+        <svg
+          className="w-6 h-6 group-hover:-translate-y-1 transition-transform duration-300"
+          fill="none"
+          stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2.5"
+            d="M5 10l7-7m0 0l7 7m-7-7v18"
+          />
         </svg>
       </button>
 
