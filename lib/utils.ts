@@ -22,6 +22,8 @@ export const reg6Provinces: ProvinceDefinition[] = [
       "60220",
       "60230",
       "60240",
+      "60250",
+      "60260",
       "428",
     ]),
   },
