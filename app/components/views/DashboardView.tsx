@@ -1375,7 +1375,7 @@ const DashboardView = ({
                   value={
                     <CountUp
                       end={summaryKPIs.successRate}
-                      decimals={1}
+                      decimals={2}
                       suffix="%"
                     />
                   }
@@ -1537,7 +1537,7 @@ const DashboardView = ({
                   value={
                     <CountUp
                       end={currentCallSuccessRate}
-                      decimals={1}
+                      decimals={2}
                       suffix="%"
                     />
                   }
@@ -1576,7 +1576,7 @@ const DashboardView = ({
                   value={
                     <CountUp
                       end={currentCallFailRate}
-                      decimals={1}
+                      decimals={2}
                       suffix="%"
                     />
                   }
