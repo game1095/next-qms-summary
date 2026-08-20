@@ -171,7 +171,7 @@ export const reg6Provinces: ProvinceDefinition[] = [
   {
     key: "sp-nakhon-sawan",
     label: "ศป.นครสวรรค์",
-    codes: new Set(["60010"]),
+    codes: new Set(["60010" , "60099"]),
   },
   {
     key: "sp-phitsanulok",
