@@ -966,7 +966,14 @@ const DashboardView = ({
   };
 
   const isProvinceSummary = selectedFilter === "province-summary";
-
+  
+  const currentServiceLabel = useMemo(() => {
+    if (selectedServiceFilter === "all") return "ทุกบริการ";
+    if (selectedServiceFilter === "GROUP_EJW") return "EMS (ไม่รวม COD)";
+    if (selectedServiceFilter === "GROUP_COD") return "รวม COD";
+    return selectedServiceFilter;
+  }, [selectedServiceFilter]);
+  
   return (
     <div
       className={`${active ? "block" : "hidden"} space-y-8 pb-20 bg-slate-50 min-h-screen font-sans selection:bg-blue-100 selection:text-blue-900`}
@@ -990,7 +997,7 @@ const DashboardView = ({
               <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-snug">
                 รายงานประสิทธิภาพการนำจ่าย และ ประสิทธิภาพการโทร EMS{" "}
                 <span className="text-red-600">
-                  ({filterDisplayNames[selectedFilter]})
+                  ({filterDisplayNames[selectedFilter]} - {currentServiceLabel})
                 </span>
               </h2>
               <div>
